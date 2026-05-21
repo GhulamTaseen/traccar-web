@@ -60,6 +60,7 @@ import { generateLoginToken } from './common/components/NativeInterface';
 import { useLocalization } from './common/components/LocalizationProvider';
 import fetchOrThrow from './common/util/fetchOrThrow';
 import AuditPage from './reports/AuditPage';
+import DriverReportPage from './reports/DriverReportPage';
 
 const Navigation = () => {
   const dispatch = useDispatch();
@@ -188,6 +189,7 @@ const Navigation = () => {
           <Route path="scheduled" element={<ScheduledPage />} />
           <Route path="statistics" element={<StatisticsPage />} />
           <Route path="audit" element={<AuditPage />} />
+          <Route path="driver-behavior" element={<DriverReportPage />} />
           <Route path="logs" element={<LogsPage />} />
         </Route>
       </Route>
