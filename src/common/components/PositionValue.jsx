@@ -17,6 +17,7 @@ import {
   formatVoltage,
   formatVolume,
   formatConsumption,
+  formatSeconds,
 } from '../util/formatter';
 import { speedToKnots } from '../util/converter';
 import { useAttributePreference, usePreference } from '../util/preferences';
@@ -82,6 +83,8 @@ const PositionValue = ({ position, property, attribute }) => {
         return value != null ? formatDistance(value, distanceUnit, t) : '';
       case 'hours':
         return value != null ? formatNumericHours(value, t) : '';
+      case 'idleDuration':
+        return value != null ? formatSeconds(value, t) : '';
       default:
         if (typeof value === 'number') {
           return formatNumber(value);
