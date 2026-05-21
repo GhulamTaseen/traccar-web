@@ -7,6 +7,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import SpeedIcon from '@mui/icons-material/Speed';
 import RouteIcon from '@mui/icons-material/Route';
 import EventRepeatIcon from '@mui/icons-material/EventRepeat';
 import NotesIcon from '@mui/icons-material/Notes';
@@ -87,6 +88,12 @@ const ReportsMenu = () => {
           title={t('reportReplay')}
           link="/replay"
           icon={<RouteIcon />}
+        />
+        <MenuItem
+          title={t('reportDriverBehavior')}
+          link={buildLink('/reports/driver-behavior')}
+          icon={<SpeedIcon />}
+          selected={location.pathname === '/reports/driver-behavior'}
         />
         <MenuItem
           title={t('reportPositions')}

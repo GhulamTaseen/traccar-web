@@ -571,6 +571,7 @@
     "reportDaily": "Daily Summary",
     "reportChart": "Chart",
     "reportAudit": "Audit",
+    "reportDriverBehavior": "Driver Behavior",
     "reportConfigure": "Configure",
     "reportEventTypes": "Event Types",
     "reportChartType": "Chart Type",
