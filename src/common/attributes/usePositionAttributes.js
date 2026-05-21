@@ -389,4 +389,37 @@ export default (t) => useMemo(() => ({
     name: t('positionAudio'),
     type: 'string',
   },
+  idleDuration: {
+    name: t('positionIdleDuration'),
+    type: 'number',
+    dataType: 'seconds',
+  },
+  drivingScore: {
+    name: t('positionDrivingScore'),
+    type: 'number',
+  },
+  harshAcceleration: {
+    name: t('positionHarshAcceleration'),
+    type: 'boolean',
+  },
+  harshBraking: {
+    name: t('positionHarshBraking'),
+    type: 'boolean',
+  },
+  harshCornering: {
+    name: t('positionHarshCornering'),
+    type: 'boolean',
+  },
+  lastTripScore: {
+    name: t('positionLastTripScore'),
+    type: 'number',
+  },
+  lastTripEvents: {
+    name: t('positionLastTripEvents'),
+    type: 'number',
+  },
+  tripFinished: {
+    name: t('positionTripFinished'),
+    type: 'boolean',
+  },
 }), [t]);
