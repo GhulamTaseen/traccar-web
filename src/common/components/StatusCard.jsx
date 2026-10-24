@@ -34,7 +34,7 @@ import VideocamOffIcon from '@mui/icons-material/VideocamOff';
 import { useTranslation } from './LocalizationProvider';
 import RemoveDialog from './RemoveDialog';
 import AddressValue from './AddressValue';
-import Gauge, { GAUGE_TICKS, tickAngle } from './Gauge';
+import Gauge, { COLORS } from './Gauge';
 
 import { useDeviceReadonly, useRestriction } from '../util/permissions';
 import { devicesActions } from '../../store';
@@ -46,11 +46,11 @@ import { formatNotificationTitle, formatStatus, formatTime } from '../util/forma
 
 import {
   distanceFromMeters,
-  distanceUnitString,
   speedFromKnots,
   volumeFromLiters,
   volumeUnitString,
 } from '../util/converter';
+
 import EngineIcon from '../../resources/images/data/engine.svg?react';
 
 const statusColors = {
@@ -78,7 +78,6 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
       width: 'calc(100vw - 16px)',
     },
   },
-
   card: {
     pointerEvents: 'auto',
     width: '100%',
@@ -90,7 +89,6 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
       maxHeight: 'calc(100dvh - 24px)',
     },
   },
-
   header: {
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
@@ -106,7 +104,6 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
       padding: theme.spacing(1, 1.5),
     },
   },
-
   identity: {
     display: 'flex',
     alignItems: 'center',
@@ -118,7 +115,6 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
       gridColumn: '1 / -1',
     },
   },
-
   vehicleImage: {
     width: 46,
     height: 36,
@@ -128,7 +124,6 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
       height: 32,
     },
   },
-
   indicators: {
     display: 'flex',
     alignItems: 'center',
@@ -150,7 +145,6 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
       },
     },
   },
-
   indicator: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -165,15 +159,12 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
       height: 28,
     },
   },
-
   ignitionOn: {
     color: theme.palette.success.main,
   },
-
   ignitionOff: {
     color: theme.palette.text.secondary,
   },
-
   toolbar: {
     display: 'flex',
     alignItems: 'center',
@@ -205,14 +196,12 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
       },
     },
   },
-
   extraButton: {
     backgroundColor: theme.palette.action.hover,
     '&:hover': {
       backgroundColor: theme.palette.action.selected,
     },
   },
-
   body: {
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr)',
@@ -221,14 +210,12 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
       gridTemplateColumns: '1fr',
     },
   },
-
   information: {
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: theme.shape.borderRadius,
     overflow: 'hidden',
     minWidth: 0,
   },
-
   infoRow: {
     display: 'flex',
     alignItems: 'center',
@@ -240,24 +227,21 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
       borderTop: `1px solid ${theme.palette.divider}`,
     },
   },
-
   infoIcon: {
     flex: '0 0 20px',
     color: theme.palette.text.secondary,
   },
-
   gauges: {
     display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr)',
+    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr)',
     alignItems: 'center',
-    gap: theme.spacing(1),
+    gap: theme.spacing(1.5),
     minWidth: 0,
     [theme.breakpoints.down('sm')]: {
       gap: theme.spacing(0.5),
-      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr)',
     },
   },
-
   sidePanel: {
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: theme.shape.borderRadius,
@@ -269,15 +253,12 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
     textAlign: 'center',
     overflowWrap: 'anywhere',
   },
-
   muted: {
     color: theme.palette.text.secondary,
   },
-
   success: {
     color: theme.palette.success.main,
   },
-
   error: {
     color: theme.palette.error.main,
   },
@@ -309,7 +290,21 @@ const booleanOrNull = (value) => {
   return null;
 };
 
-const formatValue = (value) => (value == null ? '--' : String(Number(value.toFixed(2))));
+const formatPositionDate = (fixTime) => {
+  if (!fixTime) {
+    return '--';
+  }
+
+  const positionDate = new Date(fixTime);
+  const today = new Date();
+
+  const isToday =
+    positionDate.getFullYear() === today.getFullYear() &&
+    positionDate.getMonth() === today.getMonth() &&
+    positionDate.getDate() === today.getDate();
+
+  return isToday ? 'Today' : formatTime(fixTime, 'date');
+};
 
 const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPadding = 0 }) => {
   const { classes } = useStyles({ desktopPadding });
@@ -324,9 +319,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
   const shareDisabled = useSelector((state) => state.session.server.attributes.disableShare);
 
   const user = useSelector((state) => state.session.user);
-
   const device = useSelector((state) => state.devices.items[deviceId]);
-
   const events = useSelector((state) => state.events.items);
 
   const distanceUnit = useAttributePreference('distanceUnit');
@@ -341,7 +334,6 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
 
   const attributes = position?.attributes || {};
   const deviceAttributes = device?.attributes || {};
-
   const deviceImage = deviceAttributes.deviceImage;
 
   const deviceEvents = events.filter((event) => event.deviceId === deviceId);
@@ -349,12 +341,20 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
   const ignition = booleanOrNull(attributes.ignition);
 
   const voltage = numberOrNull(attributes.battery);
-
   const batteryLevel = numberOrNull(attributes.batteryLevel ?? attributes.battery);
 
   const batteryValue = voltage ?? batteryLevel;
-  const batteryUnit = voltage != null ? 'V' : '%';
-  const batteryMax = voltage != null ? 16 : 100;
+  const hasVoltage = voltage != null;
+  const batteryUnit = hasVoltage ? 'V' : '%';
+  const batteryMin = 0;
+  const batteryMax = 100;
+
+  const batteryText =
+    batteryValue != null
+      ? hasVoltage
+        ? batteryValue.toFixed(1)
+        : String(Math.round(batteryValue))
+      : '--';
 
   const fuelValue = numberOrNull(attributes.fuelLevel ?? attributes.fuel);
 
@@ -364,21 +364,15 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
 
   const fuelMax = fuelIsVolume ? Math.max(100, Math.ceil(fuelValue || 0)) : 100;
 
+  const fuelDisplayValue =
+    fuelValue != null && fuelIsVolume ? volumeFromLiters(fuelValue, volumeUnit) : fuelValue;
+
   const speedValue = position?.speed != null ? speedFromKnots(position.speed, speedUnit) : null;
 
-  const speedGaugeMax = Math.max(120, Math.ceil((speedValue || 0) / 10) * 10);
+  const speedGaugeMax = Math.max(200, Math.ceil((speedValue || 0) / 20) * 20);
 
-  const positionItemsPreference = useAttributePreference(
-    'positionItems',
-    'fixTime,address,speed,totalDistance',
-  );
+  const speedUnitLabel = { kmh: 'km/h', mph: 'mph', kn: 'kn' }[speedUnit] ?? 'km/h';
 
-  const positionItems =
-    typeof positionItemsPreference === 'string'
-      ? positionItemsPreference.split(',').map((item) => item.trim())
-      : ['fixTime', 'address', 'speed', 'totalDistance'];
-
-  // Prefer the latest position attribute; use device attributes as fallback.
   const rawTotalDistance = numberOrNull(
     attributes.totalDistance ??
       deviceAttributes.totalDistance ??
@@ -388,18 +382,14 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
       deviceAttributes.obdOdometer,
   );
 
-  const showTotalDistance =
-    position != null && positionItems.includes('totalDistance') && rawTotalDistance != null;
+  const odometerText =
+    rawTotalDistance != null
+      ? String(Math.round(distanceFromMeters(rawTotalDistance, distanceUnit)))
+      : '--';
 
-  const totalDistanceValue = showTotalDistance
-    ? distanceFromMeters(rawTotalDistance, distanceUnit)
-    : null;
+  const eventTime = position ? formatTime(position.fixTime, 'time') : null;
 
-  const totalDistanceUnit = distanceUnitString(distanceUnit, t);
-
-  const eventTime = position ? formatTime(position.fixTime, 'seconds') : null;
-
-  const eventDate = position ? formatTime(position.fixTime, 'date') : null;
+  const eventDate = position ? formatPositionDate(position.fixTime) : null;
 
   const formatType = (event) =>
     formatNotificationTitle(t, {
@@ -433,7 +423,6 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
   const handleRemove = useCatch(async (removed) => {
     if (removed) {
       const response = await fetchOrThrow('/api/devices');
-
       dispatch(devicesActions.refresh(await response.json()));
     }
 
@@ -502,7 +491,6 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
 
                   <div>
                     <Typography variant="body1">{device.name}</Typography>
-
                     <Typography
                       variant="caption"
                       color={statusColors[device.status] || 'textSecondary'}
@@ -616,10 +604,8 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
                     <div className={classes.information}>
                       <div className={classes.infoRow}>
                         <AccessTimeIcon className={classes.infoIcon} fontSize="small" />
-
                         <div>
                           <Typography variant="body2">{eventTime}</Typography>
-
                           <Typography variant="caption" color="textSecondary">
                             {eventDate}
                           </Typography>
@@ -627,11 +613,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
                       </div>
 
                       <div className={classes.infoRow}>
-                        <PlaceIcon
-                          className={`${classes.infoIcon} ${classes.success}`}
-                          fontSize="small"
-                        />
-
+                        <PlaceIcon className={classes.infoIcon} fontSize="small" />
                         <AddressValue
                           latitude={position.latitude}
                           longitude={position.longitude}
@@ -639,26 +621,13 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
                         />
                       </div>
 
-                      {showTotalDistance && (
-                        <div className={classes.infoRow}>
-                          <RouteIcon className={classes.infoIcon} fontSize="small" />
-
-                          <div>
-                            <Typography variant="body2">{t('deviceTotalDistance')}</Typography>
-
-                            <Typography variant="body2" color="textSecondary">
-                              {formatValue(totalDistanceValue)} {totalDistanceUnit}
-                            </Typography>
-                          </div>
-                        </div>
-                      )}
-
                       <div className={classes.infoRow}>
                         <NotificationsActiveIcon
-                          className={`${classes.infoIcon} ${classes.success}`}
+                          className={`${classes.infoIcon} ${
+                            deviceEvents.length > 0 ? classes.success : ''
+                          }`}
                           fontSize="small"
                         />
-
                         <div>
                           {deviceEvents.length > 0 ? (
                             deviceEvents.map((event) => (
@@ -679,47 +648,52 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
 
                     <div className={classes.gauges}>
                       <Gauge
+                        variant="fuel"
                         label={t('positionFuel')}
-                        value={fuelIsVolume ? volumeFromLiters(fuelValue, volumeUnit) : fuelValue}
+                        ariaUnit={fuelUnit}
+                        value={fuelDisplayValue}
+                        min={0}
                         max={fuelMax}
-                        marks={[
-                          { label: 'E', angle: 135 },
-                          { label: '½', angle: 270 },
-                          { label: 'F', angle: 405 },
-                        ]}
-                        unit={fuelUnit}
                       />
 
                       <Gauge
+                        variant="speed"
                         label={t('positionSpeed')}
                         value={speedValue}
+                        min={0}
                         max={speedGaugeMax}
-                        marks={Array.from({ length: GAUGE_TICKS }, (_, index) => ({
-                          label: String(Math.round((speedGaugeMax * index) / (GAUGE_TICKS - 1))),
-                          angle: tickAngle(index),
-                        }))}
-                        primary
+                        labelFormat={(value) => String(Math.round(value))}
+                        unit={speedUnitLabel}
+                        displayValue={odometerText}
+                        badge="ODO"
                       />
 
                       <Gauge
+                        variant="battery"
                         label={t('positionBattery')}
+                        ariaUnit={batteryUnit}
                         value={batteryValue}
-                        min={voltage != null ? 8 : 0}
+                        min={batteryMin}
                         max={batteryMax}
-                        marks={
-                          voltage != null
-                            ? [
-                                { label: '8', angle: 135 },
-                                { label: '12', angle: 270 },
-                                { label: '16', angle: 405 },
-                              ]
-                            : [
-                                { label: '0', angle: 135 },
-                                { label: '50', angle: 270 },
-                                { label: '100', angle: 405 },
-                              ]
-                        }
-                        unit={batteryUnit}
+                        tickCount={6}
+                        labelFormat={(value) => String(Math.round(value))}
+                        displayValue={batteryText}
+                        {...(hasVoltage
+                          ? { unit: '12V SYS' }
+                          : {
+                              unit: undefined,
+                              innerLabel: {
+                                text: '%',
+                                y: 44.5,
+                                size: 10.5,
+                                color: '#c4def2',
+                              },
+                              bands: [
+                                [0, 0.15, COLORS.battRed],
+                                [0.15, 0.3, COLORS.battOrange],
+                                [0.3, 1, COLORS.battGreen],
+                              ],
+                            })}
                       />
                     </div>
 
