@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Button,
   Table,
   TableRow,
   TableCell,
@@ -7,7 +8,9 @@ import {
   TableBody,
   MenuItem,
   TextField,
+  Typography,
 } from '@mui/material';
+import { saveAs } from 'file-saver';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { formatTime } from '../common/util/formatter';
 import { useTranslation } from '../common/components/LocalizationProvider';
@@ -81,12 +84,41 @@ const StatisticsPage = () => {
     }
   }, []);
 
+  const escapeCsv = (value) => {
+    const text = value === null || value === undefined ? '' : String(value);
+    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+
+  const downloadCsv = () => {
+    const header = columns.map((key) => escapeCsv(t(columnsMap.get(key))));
+    const rows = items.map((item) =>
+      columns.map((key) =>
+        escapeCsv(key === 'captureTime' ? formatTime(item[key], 'date') : item[key]),
+      ),
+    );
+    const content = [header, ...rows].map((row) => row.join(',')).join('\r\n');
+    saveAs(new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8' }), 'statistics.csv');
+  };
+
   return (
     <PageLayout menu={<ReportsMenu />} breadcrumbs={['reportTitle', 'statisticsTitle']}>
       <div className={classes.header}>
         <ReportFilter onShow={onShow} deviceType="none" loading={loading}>
           <StatisticsTypeSelect />
           <ColumnSelect columns={columns} setColumns={setColumns} columnsArray={columnsArray} />
+          <div className={classes.filterItem}>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="secondary"
+              disabled={loading || items.length === 0}
+              onClick={downloadCsv}
+            >
+              <Typography variant="button" noWrap>
+                {t('statisticsDownloadCsv')}
+              </Typography>
+            </Button>
+          </div>
         </ReportFilter>
       </div>
       <Table>

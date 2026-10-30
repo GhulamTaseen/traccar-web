@@ -650,6 +650,7 @@
     "statisticsMessagesStored": "Messages Stored",
     "statisticsGeocoder": "Geocoder Requests",
     "statisticsGeolocation": "Geolocation Requests",
+    "statisticsDownloadCsv": "Download CSV",
     "categoryArrow": "Arrow",
     "categoryDefault": "Default",
     "categoryAnimal": "Animal",
