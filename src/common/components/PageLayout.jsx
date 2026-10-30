@@ -10,6 +10,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { makeStyles } from 'tss-react/mui';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -22,6 +23,7 @@ const useStyles = makeStyles()((theme, { miniVariant }) => ({
   root: {
     height: '100%',
     display: 'flex',
+    backgroundColor: theme.palette.background.default,
     [theme.breakpoints.down('md')]: {
       flexDirection: 'column',
     },
@@ -30,12 +32,19 @@ const useStyles = makeStyles()((theme, { miniVariant }) => ({
     width: miniVariant ? theme.spacing(7) : theme.dimensions.drawerWidthDesktop,
     overflowX: 'hidden',
     transition: theme.transitions.create('width', {
-      easing: theme.transitions.easing.sharp,
+      easing: theme.transitions.easing.easeInOut,
       duration: theme.transitions.duration.enteringScreen,
     }),
     ...(miniVariant && {
       '& .MuiListItemButton-root': {
         minHeight: 48,
+        justifyContent: 'center',
+        paddingInline: 0,
+      },
+      '& .MuiListItemIcon-root': {
+        minWidth: 0,
+        justifyContent: 'center',
+        marginInlineEnd: 0,
       },
       '& .MuiListItemText-root': {
         display: 'none',
@@ -45,6 +54,29 @@ const useStyles = makeStyles()((theme, { miniVariant }) => ({
       display: 'none',
     },
   },
+  drawerPaper: {
+    borderRadius: 0,
+    border: 'none',
+    backgroundColor: alpha(
+      theme.palette.background.paper,
+      theme.palette.mode === 'dark' ? 0.72 : 0.8,
+    ),
+    backgroundImage: 'none',
+    backdropFilter: 'blur(22px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(22px) saturate(160%)',
+    boxShadow:
+      theme.direction === 'rtl'
+        ? `-10px 0 30px -18px ${alpha('#000000', theme.palette.mode === 'dark' ? 0.9 : 0.35)}`
+        : `10px 0 30px -18px ${alpha('#000000', theme.palette.mode === 'dark' ? 0.9 : 0.35)}`,
+    '@media print': {
+      display: 'none',
+    },
+  },
+  drawerToolbar: {
+    gap: theme.spacing(0.5),
+    paddingInline: theme.spacing(1.5),
+    minHeight: 64,
+  },
   mobileDrawer: {
     width: theme.dimensions.drawerWidthTablet,
     '@media print': {
@@ -53,6 +85,15 @@ const useStyles = makeStyles()((theme, { miniVariant }) => ({
   },
   mobileToolbar: {
     zIndex: 1,
+    backgroundColor: alpha(theme.palette.background.paper, 0.8),
+    backgroundImage: 'none',
+    backdropFilter: 'blur(18px) saturate(150%)',
+    WebkitBackdropFilter: 'blur(18px) saturate(150%)',
+    boxShadow:
+      theme.palette.mode === 'dark'
+        ? '0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 26px -22px rgba(0, 0, 0, 0.9)'
+        : '0 1px 0 rgba(16, 24, 40, 0.05), 0 10px 26px -22px rgba(16, 24, 40, 0.45)',
+    border: 'none',
     '@media print': {
       display: 'none',
     },
@@ -113,15 +154,15 @@ const PageLayout = ({ menu, breadcrumbs, children }) => {
         <Drawer
           variant="permanent"
           className={classes.desktopDrawer}
-          slotProps={{ paper: { className: classes.desktopDrawer } }}
+          slotProps={{ paper: { className: `${classes.desktopDrawer} ${classes.drawerPaper}` } }}
         >
-          <Toolbar>
+          <Toolbar className={classes.drawerToolbar}>
             {!miniVariant && (
               <>
                 <IconButton
                   color="inherit"
                   edge="start"
-                  sx={{ mr: 2 }}
+                  sx={{ mr: 1 }}
                   onClick={() => navigate('/')}
                 >
                   <BackIcon />
@@ -132,7 +173,7 @@ const PageLayout = ({ menu, breadcrumbs, children }) => {
             <IconButton
               color="inherit"
               edge="start"
-              sx={{ ml: miniVariant ? -2 : 'auto' }}
+              sx={{ ml: miniVariant ? -1 : 'auto' }}
               onClick={toggleDrawer}
             >
               {miniVariant !== (theme.direction === 'rtl') ? (
@@ -142,7 +183,7 @@ const PageLayout = ({ menu, breadcrumbs, children }) => {
               )}
             </IconButton>
           </Toolbar>
-          <Divider />
+          <Divider sx={{ mx: 2 }} />
           {menu}
         </Drawer>
       ) : (
@@ -150,7 +191,7 @@ const PageLayout = ({ menu, breadcrumbs, children }) => {
           variant="temporary"
           open={openDrawer}
           onClose={() => setOpenDrawer(false)}
-          slotProps={{ paper: { className: classes.mobileDrawer } }}
+          slotProps={{ paper: { className: `${classes.mobileDrawer} ${classes.drawerPaper}` } }}
         >
           {menu}
         </Drawer>
@@ -161,7 +202,7 @@ const PageLayout = ({ menu, breadcrumbs, children }) => {
             <IconButton
               color="inherit"
               edge="start"
-              sx={{ mr: 2 }}
+              sx={{ mr: 1 }}
               onClick={() => setOpenDrawer(true)}
             >
               <MenuIcon />

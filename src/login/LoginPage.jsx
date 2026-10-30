@@ -9,8 +9,10 @@ import {
   Link,
   Alert,
   IconButton,
+  CircularProgress,
   Tooltip,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import CountryFlag from 'react-country-flag';
 import { makeStyles } from 'tss-react/mui';
 import VpnLockIcon from '@mui/icons-material/VpnLock';
@@ -37,15 +39,32 @@ const useStyles = makeStyles()((theme) => ({
   options: {
     position: 'fixed',
     top: theme.spacing(2),
-    right: theme.spacing(2),
+    insetInlineEnd: theme.spacing(2),
+    zIndex: 2,
     display: 'flex',
     flexDirection: 'row',
-    gap: theme.spacing(1),
+    alignItems: 'center',
+    gap: theme.spacing(0.5),
+    padding: theme.spacing(0.5),
+    borderRadius: 999,
+    border: `1px solid ${theme.palette.surface.outline}`,
+    backgroundColor: alpha(
+      theme.palette.background.paper,
+      theme.palette.mode === 'dark' ? 0.75 : 0.82,
+    ),
+    backdropFilter: 'blur(14px) saturate(150%)',
+    WebkitBackdropFilter: 'blur(14px) saturate(150%)',
+    boxShadow: '0 10px 30px -22px rgba(16, 24, 40, 0.45)',
   },
   container: {
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing(2),
+  },
+  logo: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: theme.spacing(1),
   },
   extraContainer: {
     display: 'flex',
@@ -57,11 +76,20 @@ const useStyles = makeStyles()((theme) => ({
   registerButton: {
     minWidth: 'unset',
   },
+  submit: {
+    position: 'relative',
+    minHeight: 46,
+    marginTop: theme.spacing(0.5),
+  },
+  spinner: {
+    position: 'absolute',
+    insetInlineStart: theme.spacing(2),
+  },
   link: {
     cursor: 'pointer',
   },
   flag: {
-    marginRight: theme.spacing(1),
+    marginInlineEnd: theme.spacing(1),
   },
 }));
 
@@ -80,6 +108,7 @@ const LoginPage = () => {
   }));
 
   const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [email, setEmail] = usePersistedState('loginEmail', '');
   const [password, setPassword] = useState('');
@@ -106,6 +135,7 @@ const LoginPage = () => {
   const handlePasswordLogin = async (event) => {
     event.preventDefault();
     setFailed(false);
+    setLoading(true);
     try {
       const query = `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
       const response = await fetch('/api/session', {
@@ -127,6 +157,8 @@ const LoginPage = () => {
     } catch {
       setFailed(true);
       setPassword('');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -199,7 +231,9 @@ const LoginPage = () => {
       </div>
       <div className={classes.container}>
         {useMediaQuery(theme.breakpoints.down('lg')) && (
-          <LogoImage color={theme.palette.primary.main} />
+          <div className={classes.logo}>
+            <LogoImage color={theme.palette.primary.main} />
+          </div>
         )}
         {!!announcement && !announcementShown && (
           <Alert severity="info" onClose={() => setAnnouncementShown(true)}>
@@ -245,8 +279,17 @@ const LoginPage = () => {
               type="submit"
               variant="contained"
               color="secondary"
-              disabled={!email || !password || (codeEnabled && !code)}
+              className={classes.submit}
+              disabled={!email || !password || (codeEnabled && !code) || loading}
             >
+              {loading && (
+                <CircularProgress
+                  size={18}
+                  thickness={5}
+                  color="inherit"
+                  className={classes.spinner}
+                />
+              )}
               {t('loginLogin')}
             </Button>
           </>

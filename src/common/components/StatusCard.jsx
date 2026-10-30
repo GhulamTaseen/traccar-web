@@ -15,6 +15,7 @@ import {
   Box,
 } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
+import { alpha, keyframes } from '@mui/material/styles';
 
 import CloseIcon from '@mui/icons-material/Close';
 import RouteIcon from '@mui/icons-material/Route';
@@ -58,6 +59,17 @@ const statusColors = {
   offline: 'error',
 };
 
+const cardEnter = keyframes`
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+`;
+
 const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
   root: {
     pointerEvents: 'none',
@@ -85,6 +97,23 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
     boxSizing: 'border-box',
     maxHeight: 'calc(100dvh - 100px)',
     overflowY: 'auto',
+    borderRadius: 16,
+    border: `1px solid ${theme.palette.surface.outline}`,
+    backgroundColor: alpha(
+      theme.palette.background.paper,
+      theme.palette.mode === 'dark' ? 0.72 : 0.78,
+    ),
+    backgroundImage: 'none',
+    backdropFilter: 'blur(22px) saturate(170%)',
+    WebkitBackdropFilter: 'blur(22px) saturate(170%)',
+    boxShadow:
+      theme.palette.mode === 'dark'
+        ? '0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 24px 60px -20px rgba(0, 0, 0, 0.85)'
+        : '0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 24px 60px -24px rgba(16, 24, 40, 0.35)',
+    animation: `${cardEnter} 360ms cubic-bezier(0.22, 1, 0.36, 1) both`,
+    '@media (prefers-reduced-motion: reduce)': {
+      animation: 'none',
+    },
     [theme.breakpoints.down('sm')]: {
       maxHeight: 'calc(100dvh - 24px)',
     },
@@ -96,6 +125,9 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
     gap: theme.spacing(1),
     padding: theme.spacing(1, 2),
     borderBottom: `1px solid ${theme.palette.divider}`,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.08 : 0.04),
     cursor: 'grab',
     [theme.breakpoints.down('sm')]: {
       gridTemplateColumns: 'max-content minmax(0, 1fr)',
@@ -213,6 +245,7 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
   information: {
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: theme.shape.borderRadius,
+    backgroundColor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.03 : 0.02),
     overflow: 'hidden',
     minWidth: 0,
   },
@@ -223,6 +256,12 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
     minHeight: 42,
     padding: theme.spacing(1, 1.5),
     minWidth: 0,
+    transition: theme.transitions.create('background-color', {
+      duration: theme.transitions.duration.short,
+    }),
+    '&:hover': {
+      backgroundColor: alpha(theme.palette.primary.main, 0.05),
+    },
     '& + &': {
       borderTop: `1px solid ${theme.palette.divider}`,
     },
@@ -245,6 +284,7 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
   sidePanel: {
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: theme.shape.borderRadius,
+    backgroundColor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.03 : 0.02),
     padding: theme.spacing(2),
     minWidth: 0,
     display: 'flex',
@@ -478,7 +518,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
             dragHandleClassName="draggable-header"
             style={{ position: 'relative' }}
           >
-            <Card elevation={3} className={classes.card}>
+            <Card elevation={0} className={classes.card}>
               <div className={`${classes.header} draggable-header`}>
                 <div className={classes.identity}>
                   {deviceImage && (

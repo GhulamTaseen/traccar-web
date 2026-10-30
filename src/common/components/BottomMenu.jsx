@@ -10,6 +10,8 @@ import {
   Typography,
   Badge,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
+import { makeStyles } from 'tss-react/mui';
 
 import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -22,7 +24,91 @@ import { useTranslation } from './LocalizationProvider';
 import { useRestriction } from '../util/permissions';
 import { nativePostMessage } from './NativeInterface';
 
+const useStyles = makeStyles()((theme) => ({
+  root: {
+    borderTop: `1px solid ${theme.palette.divider}`,
+    backgroundColor: alpha(
+      theme.palette.background.paper,
+      theme.palette.mode === 'dark' ? 0.85 : 0.9,
+    ),
+    backdropFilter: 'blur(18px) saturate(150%)',
+    WebkitBackdropFilter: 'blur(18px) saturate(150%)',
+    boxShadow:
+      theme.palette.mode === 'dark'
+        ? '0 -10px 28px -24px rgba(0, 0, 0, 0.9)'
+        : '0 -10px 28px -24px rgba(16, 24, 40, 0.45)',
+  },
+  navigation: {
+    height: theme.dimensions.bottomBarHeight,
+    backgroundColor: 'transparent',
+    '& .MuiBottomNavigationAction-root': {
+      position: 'relative',
+      minWidth: 0,
+      paddingInline: theme.spacing(1),
+      color: theme.palette.text.secondary,
+      transition: theme.transitions.create(['color', 'transform'], {
+        duration: theme.transitions.duration.short,
+      }),
+      '& > *': {
+        position: 'relative',
+        zIndex: 1,
+      },
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 5,
+        left: 0,
+        right: 0,
+        marginInline: 'auto',
+        width: 46,
+        height: 30,
+        borderRadius: 999,
+        backgroundColor: alpha(
+          theme.palette.primary.main,
+          theme.palette.mode === 'dark' ? 0.26 : 0.14,
+        ),
+        opacity: 0,
+        transform: 'scale(0.6)',
+        transition: theme.transitions.create(['opacity', 'transform'], {
+          duration: theme.transitions.duration.shorter,
+          easing: theme.transitions.easing.easeOut,
+        }),
+      },
+      '&.Mui-selected': {
+        color: theme.palette.primary.main,
+        '&::before': {
+          opacity: 1,
+          transform: 'scale(1)',
+        },
+        '& .MuiBottomNavigationAction-label': {
+          fontWeight: 600,
+        },
+        '& .MuiSvgIcon-root': {
+          filter: `drop-shadow(0 4px 10px ${alpha(theme.palette.primary.main, 0.45)})`,
+          transform: 'translateY(-1px)',
+        },
+      },
+    },
+    '& .MuiBottomNavigationAction-label': {
+      fontSize: '0.72rem',
+      fontWeight: 500,
+      letterSpacing: '0.01em',
+      lineHeight: 1.4,
+      marginTop: 2,
+    },
+    '& .MuiBottomNavigationAction-label.Mui-selected': {
+      fontSize: '0.75rem',
+    },
+    '& .MuiSvgIcon-root': {
+      transition: theme.transitions.create(['transform', 'filter'], {
+        duration: theme.transitions.duration.short,
+      }),
+    },
+  },
+}));
+
 const BottomMenu = () => {
+  const { classes } = useStyles();
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -126,8 +212,13 @@ const BottomMenu = () => {
   };
 
   return (
-    <Paper square elevation={3}>
-      <BottomNavigation value={currentSelection()} onChange={handleSelection} showLabels>
+    <Paper square elevation={0} className={classes.root}>
+      <BottomNavigation
+        value={currentSelection()}
+        onChange={handleSelection}
+        showLabels
+        className={classes.navigation}
+      >
         <BottomNavigationAction
           label={t('mapTitle')}
           icon={
