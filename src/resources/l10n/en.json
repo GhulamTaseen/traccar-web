@@ -12,6 +12,8 @@
     "sharedEdit": "Edit",
     "sharedRemove": "Remove",
     "sharedRemoveConfirm": "Remove item?",
+    "sharedScheduleFutureRequired": "Scheduled time must be in the future",
+    "sharedScheduleAttempts": "Attempts",
     "sharedNoData": "No data",
     "sharedSubject": "Subject",
     "sharedYes": "Yes",
