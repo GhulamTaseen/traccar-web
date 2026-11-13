@@ -135,7 +135,7 @@ const PageTitle = ({ breadcrumbs }) => {
 };
 
 const PageLayout = ({ menu, breadcrumbs, children }) => {
-  const [miniVariant, setMiniVariant] = useState(false);
+  const [miniVariant, setMiniVariant] = useState(true);
   const { classes } = useStyles({ miniVariant });
   const theme = useTheme();
   const navigate = useNavigate();
@@ -154,7 +154,12 @@ const PageLayout = ({ menu, breadcrumbs, children }) => {
         <Drawer
           variant="permanent"
           className={classes.desktopDrawer}
-          slotProps={{ paper: { className: `${classes.desktopDrawer} ${classes.drawerPaper}` } }}
+          slotProps={{
+            paper: {
+              className: `${classes.desktopDrawer} ${classes.drawerPaper}`,
+              sx: { position: 'relative', height: '100%' },
+            },
+          }}
         >
           <Toolbar className={classes.drawerToolbar}>
             {!miniVariant && (

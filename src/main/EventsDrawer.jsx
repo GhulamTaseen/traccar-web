@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CloseIcon from '@mui/icons-material/Close';
 import { formatNotificationTitle, formatTime } from '../common/util/formatter';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import { eventsActions } from '../store';
@@ -18,6 +19,7 @@ import { eventsActions } from '../store';
 const useStyles = makeStyles()((theme) => ({
   drawer: {
     width: theme.dimensions.eventsDrawerWidth,
+    maxWidth: '100vw',
   },
   toolbar: {
     paddingLeft: theme.spacing(2),
@@ -50,8 +52,11 @@ const EventsDrawer = ({ open, onClose }) => {
     <Drawer anchor="right" open={open} onClose={onClose}>
       <Toolbar className={classes.toolbar} disableGutters>
         <Typography variant="h6" className={classes.title}>
-          {t('reportEvents')}
+          {t('sharedNotifications')}
         </Typography>
+        <IconButton aria-label={t('sharedHide')} onClick={onClose}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
         <IconButton
           size="small"
           color="inherit"
@@ -60,11 +65,24 @@ const EventsDrawer = ({ open, onClose }) => {
           <DeleteIcon fontSize="small" />
         </IconButton>
       </Toolbar>
+      <div className={classes.drawer}>
+        <Typography variant="caption" color="text.secondary" sx={{ px: 2 }}>
+          {t('dashboardLiveEvents')}
+        </Typography>
+        {!events.length && (
+          <Typography color="text.secondary" variant="body2" sx={{ p: 2 }}>
+            {t('sharedNoData')}
+          </Typography>
+        )}
+      </div>
       <List className={classes.drawer} dense>
         {events.map((event) => (
           <ListItemButton
             key={event.id}
-            onClick={() => navigate(`/event/${event.id}`)}
+            onClick={() => {
+              onClose();
+              navigate(`/event/${event.id}`);
+            }}
             disabled={!event.id}
           >
             <ListItemText

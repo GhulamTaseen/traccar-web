@@ -184,7 +184,7 @@ const AnnouncementPage = () => {
               !notificator ||
               !message.subject ||
               !message.body ||
-              (scheduleMode === 'later' && (!sendAt || isPastTime(sendAt)))
+              (scheduleMode === 'later' && !sendAt)
             }
           >
             {t(scheduleMode === 'later' ? 'sharedSchedule' : 'commandSend')}

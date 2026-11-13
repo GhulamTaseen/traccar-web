@@ -1,87 +1,49 @@
-import { lazy, Suspense, useState, useCallback, useEffect } from 'react';
-import { Paper } from '@mui/material';
+import { lazy, Suspense, useState, useEffect } from 'react';
+import { Paper, Typography } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
-import { useTheme } from '@mui/material/styles';
-import useMediaQuery from '@mui/material/useMediaQuery';
 import { useDispatch, useSelector } from 'react-redux';
+import { useOutletContext } from 'react-router-dom';
 import DeviceList from './DeviceList';
-import BottomMenu from '../common/components/BottomMenu';
 import StatusCard from '../common/components/StatusCard';
 import { devicesActions } from '../store';
 import usePersistedState from '../common/util/usePersistedState';
-import EventsDrawer from './EventsDrawer';
 import useFilter from './useFilter';
 import MainToolbar from './MainToolbar';
-import { useAttributePreference } from '../common/util/preferences';
+import { useTranslation } from '../common/components/LocalizationProvider';
 
 const MainMap = lazy(() => import('./MainMap'));
 
 const useStyles = makeStyles()((theme) => ({
-  root: {
-    height: '100%',
-  },
-  sidebar: {
-    pointerEvents: 'none',
-    display: 'flex',
-    flexDirection: 'column',
-    [theme.breakpoints.up('md')]: {
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      height: `calc(100% - ${theme.spacing(3)})`,
-      width: theme.dimensions.drawerWidthDesktop,
-      margin: theme.spacing(1.5),
-      zIndex: 3,
-    },
-    [theme.breakpoints.down('md')]: {
-      height: '100%',
-      width: '100%',
-    },
-  },
-  header: {
-    pointerEvents: 'auto',
-    zIndex: 6,
-  },
-  footer: {
-    pointerEvents: 'auto',
-    zIndex: 5,
-  },
-  middle: {
-    flex: 1,
-    display: 'grid',
-    minHeight: 0,
-  },
-  contentMap: {
-    pointerEvents: 'auto',
-    gridArea: '1 / 1',
-  },
-  contentList: {
-    pointerEvents: 'auto',
-    gridArea: '1 / 1',
+  root: { height: '100%', position: 'relative', overflow: 'hidden' },
+  panel: {
+    position: 'absolute',
+    insetInlineStart: 24,
+    top: 28,
+    bottom: 24,
+    width: theme.dimensions.drawerWidthDesktop,
+    maxWidth: 'calc(100% - 32px)',
     zIndex: 4,
     display: 'flex',
-    minHeight: 0,
+    flexDirection: 'column',
+    overflow: 'hidden',
+    border: `1px solid ${theme.palette.surface.outline}`,
+    backgroundColor: theme.palette.surface.glass,
+    backdropFilter: 'blur(20px)',
+    [theme.breakpoints.down('sm')]: { insetInlineStart: 12, top: 12, bottom: 12 },
   },
+  list: { flex: 1, minHeight: 0 },
 }));
 
 const MainPage = () => {
   const { classes } = useStyles();
+  const t = useTranslation();
   const dispatch = useDispatch();
-  const theme = useTheme();
-
-  const desktop = useMediaQuery(theme.breakpoints.up('md'));
-
-  const mapOnSelect = useAttributePreference('mapOnSelect', true);
-
+  const { devicesOpen, setDevicesOpen, onEventsClick } = useOutletContext();
   const selectedDeviceId = useSelector((state) => state.devices.selectedId);
   const positions = useSelector((state) => state.session.positions);
+  const selectedPosition = positions[selectedDeviceId];
   const [filteredPositions, setFilteredPositions] = useState([]);
-  const selectedPosition = filteredPositions.find(
-    (position) => selectedDeviceId && position.deviceId === selectedDeviceId,
-  );
-
   const [filteredDevices, setFilteredDevices] = useState([]);
-
   const [keyword, setKeyword] = useState('');
   const [filter, setFilter] = usePersistedState('deviceFilter', {
     statuses: [],
@@ -91,16 +53,9 @@ const MainPage = () => {
   const [filterSort, setFilterSort] = usePersistedState('filterSort', '');
   const [filterMap, setFilterMap] = usePersistedState('filterMap', false);
 
-  const [devicesOpen, setDevicesOpen] = useState(desktop);
-  const [eventsOpen, setEventsOpen] = useState(false);
-
-  const onEventsClick = useCallback(() => setEventsOpen(true), [setEventsOpen]);
-
   useEffect(() => {
-    if (!desktop && mapOnSelect && selectedDeviceId) {
-      setDevicesOpen(false);
-    }
-  }, [desktop, mapOnSelect, selectedDeviceId]);
+    if (selectedDeviceId) setDevicesOpen(false);
+  }, [selectedDeviceId, setDevicesOpen]);
 
   useFilter(
     keyword,
@@ -114,17 +69,16 @@ const MainPage = () => {
 
   return (
     <div className={classes.root}>
-      {desktop && (
-        <Suspense fallback={null}>
-          <MainMap
-            filteredPositions={filteredPositions}
-            selectedPosition={selectedPosition}
-            onEventsClick={onEventsClick}
-          />
-        </Suspense>
-      )}
-      <div className={classes.sidebar}>
-        <Paper square elevation={3} className={classes.header}>
+      <Suspense fallback={null}>
+        <MainMap
+          filteredPositions={filteredPositions}
+          selectedPosition={selectedPosition}
+          onEventsClick={onEventsClick}
+          panelOpen={devicesOpen || !!selectedDeviceId}
+        />
+      </Suspense>
+      {devicesOpen && (
+        <Paper className={classes.panel} elevation={4}>
           <MainToolbar
             filteredDevices={filteredDevices}
             devicesOpen={devicesOpen}
@@ -138,40 +92,22 @@ const MainPage = () => {
             filterMap={filterMap}
             setFilterMap={setFilterMap}
           />
-        </Paper>
-        <div className={classes.middle}>
-          {!desktop && (
-            <div className={classes.contentMap}>
-              <Suspense fallback={null}>
-                <MainMap
-                  filteredPositions={filteredPositions}
-                  selectedPosition={selectedPosition}
-                  onEventsClick={onEventsClick}
-                />
-              </Suspense>
-            </div>
-          )}
-          <Paper
-            square
-            className={classes.contentList}
-            style={devicesOpen ? {} : { visibility: 'hidden' }}
-          >
+          <div className={classes.list}>
             <DeviceList devices={filteredDevices} />
-          </Paper>
-        </div>
-        {desktop && (
-          <div className={classes.footer}>
-            <BottomMenu />
           </div>
-        )}
-      </div>
-      <EventsDrawer open={eventsOpen} onClose={() => setEventsOpen(false)} />
+          {!filteredDevices.length && (
+            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
+              {t('sharedNoData')}
+            </Typography>
+          )}
+        </Paper>
+      )}
       {selectedDeviceId && (
         <StatusCard
           deviceId={selectedDeviceId}
           position={selectedPosition}
           onClose={() => dispatch(devicesActions.selectId(null))}
-          desktopPadding={theme.dimensions.drawerWidthDesktop}
+          dashboard
         />
       )}
     </div>

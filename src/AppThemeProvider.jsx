@@ -1,3 +1,4 @@
+import { createContext, use } from 'react';
 import { useSelector } from 'react-redux';
 import { ThemeProvider, useMediaQuery } from '@mui/material';
 import { CacheProvider } from '@emotion/react';
@@ -6,6 +7,10 @@ import { prefixer } from 'stylis';
 import rtlPlugin from 'stylis-plugin-rtl';
 import theme from './common/theme';
 import { useLocalization } from './common/components/LocalizationProvider';
+import usePersistedState from './common/util/usePersistedState';
+
+const ThemeModeContext = createContext(null);
+export const useThemeMode = () => use(ThemeModeContext);
 
 const cache = {
   ltr: createCache({
@@ -24,13 +29,21 @@ const AppThemeProvider = ({ children }) => {
 
   const serverDarkMode = server?.attributes?.darkMode;
   const preferDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
-  const darkMode = serverDarkMode !== undefined ? serverDarkMode : preferDarkMode;
+  const [mode, setMode] = usePersistedState('themeMode', null);
+  const enforced = server?.forceSettings && serverDarkMode !== undefined;
+  const darkMode = enforced
+    ? serverDarkMode
+    : mode
+      ? mode === 'dark'
+      : (serverDarkMode ?? preferDarkMode);
 
   const themeInstance = theme(server, darkMode, direction);
 
   return (
     <CacheProvider value={cache[direction]}>
-      <ThemeProvider theme={themeInstance}>{children}</ThemeProvider>
+      <ThemeModeContext value={{ darkMode, setMode, enforced }}>
+        <ThemeProvider theme={themeInstance}>{children}</ThemeProvider>
+      </ThemeModeContext>
     </CacheProvider>
   );
 };

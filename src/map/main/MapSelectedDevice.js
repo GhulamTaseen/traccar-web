@@ -1,25 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import dimensions from '../../common/theme/dimensions';
-import { map } from '../core/MapView';
-import { usePrevious } from '../../reactHelper';
+import { map, useMapReady } from '../core/MapView';
 import { useAttributePreference } from '../../common/util/preferences';
 import { toMapCoordinates } from '../core/mapUtil';
 
 const MapSelectedDevice = () => {
   const currentTime = useSelector((state) => state.devices.selectTime);
   const currentId = useSelector((state) => state.devices.selectedId);
-  const previousTime = usePrevious(currentTime);
-  const previousId = usePrevious(currentId);
+  const previousRef = useRef({});
+  const mapReady = useMapReady();
 
   const selectZoom = useAttributePreference('web.selectZoom', 10);
   const mapFollow = useAttributePreference('mapFollow', false);
 
   const position = useSelector((state) => state.session.positions[currentId]);
 
-  const previousPosition = usePrevious(position);
-
   useEffect(() => {
+    if (!mapReady) return;
+    const previousPosition = previousRef.current.position;
     const positionChanged =
       position &&
       (!previousPosition ||
@@ -27,8 +26,8 @@ const MapSelectedDevice = () => {
         position.longitude !== previousPosition.longitude);
 
     if (
-      (currentId !== previousId ||
-        currentTime !== previousTime ||
+      (currentId !== previousRef.current.id ||
+        currentTime !== previousRef.current.time ||
         (mapFollow && positionChanged)) &&
       position
     ) {
@@ -38,16 +37,8 @@ const MapSelectedDevice = () => {
         offset: [0, -dimensions.popupMapOffset / 2],
       });
     }
-  }, [
-    currentId,
-    previousId,
-    currentTime,
-    previousTime,
-    mapFollow,
-    position,
-    previousPosition,
-    selectZoom,
-  ]);
+    previousRef.current = { id: currentId, time: currentTime, position };
+  }, [mapReady, currentId, currentTime, mapFollow, position, selectZoom]);
 
   return null;
 };
