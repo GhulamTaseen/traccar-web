@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Accordion,
   AccordionSummary,
@@ -8,6 +8,12 @@ import {
   Typography,
   Container,
   Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Alert,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useTranslation } from '../common/components/LocalizationProvider';
@@ -17,6 +23,8 @@ import SettingsMenu from './components/SettingsMenu';
 import { useCatch } from '../reactHelper';
 import useSettingsStyles from './common/useSettingsStyles';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import { useRestriction } from '../common/util/permissions';
+import { canImmobilize } from '../common/util/vehicle';
 import { messagesActions } from '../store';
 
 const CommandDevicePage = () => {
@@ -24,38 +32,63 @@ const CommandDevicePage = () => {
   const dispatch = useDispatch();
   const { classes } = useSettingsStyles();
   const t = useTranslation();
-
+  const readonly = useRestriction('readonly');
   const { id } = useParams();
-
+  const [searchParams] = useSearchParams();
+  const initialType = searchParams.get('type') === 'engineStop' ? 'engineStop' : null;
   const [savedId, setSavedId] = useState(0);
+  const [savedType, setSavedType] = useState(null);
   const [item, setItem] = useState({});
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
+  const isEngineStop = (savedId ? savedType : item.type) === 'engineStop';
 
   const handleSend = useCatch(async () => {
-    let command;
-    if (savedId) {
-      const response = await fetchOrThrow(`/api/commands/${savedId}`);
-      command = await response.json();
-    } else {
-      command = item;
+    if (sendingRef.current || readonly) return;
+    sendingRef.current = true;
+    setSending(true);
+    try {
+      const command = savedId
+        ? await (await fetchOrThrow(`/api/commands/${savedId}`)).json()
+        : { ...item, attributes: { ...item.attributes } };
+      command.deviceId = Number(id);
+      if (command.type === 'engineStop') {
+        const [devicesResponse, positionsResponse] = await Promise.all([
+          fetchOrThrow('/api/devices'),
+          fetchOrThrow('/api/positions'),
+        ]);
+        const devices = await devicesResponse.json();
+        const positions = await positionsResponse.json();
+        if (
+          !canImmobilize(
+            devices.find((device) => device.id === Number(id)),
+            positions.find((position) => position.deviceId === Number(id)),
+          )
+        ) {
+          throw new Error(t('dashboardImmobilizeSafety'));
+        }
+        command.textChannel = false;
+        command.attributes = { ...command.attributes, noQueue: true };
+      }
+      const response = await fetchOrThrow('/api/commands/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(command),
+      });
+      dispatch(
+        messagesActions.push({
+          message: t(response.status === 202 ? 'commandQueued' : 'commandSent'),
+          severity: 'success',
+        }),
+      );
+      navigate(-1);
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
+      setConfirmOpen(false);
     }
-
-    command.deviceId = parseInt(id, 10);
-
-    const response = await fetchOrThrow('/api/commands/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(command),
-    });
-    dispatch(
-      messagesActions.push({
-        message: t(response.status === 202 ? 'commandQueued' : 'commandSent'),
-        severity: 'success',
-      }),
-    );
-    navigate(-1);
   });
-
-  const validate = () => savedId || (item && item.type);
 
   return (
     <PageLayout menu={<SettingsMenu />} breadcrumbs={['settingsTitle', 'deviceCommand']}>
@@ -66,30 +99,55 @@ const CommandDevicePage = () => {
           </AccordionSummary>
           <AccordionDetails className={classes.details}>
             <BaseCommandView
+              key={`${id}-${initialType}`}
               deviceId={id}
               item={item}
               setItem={setItem}
               includeSaved
               savedId={savedId}
               setSavedId={setSavedId}
+              initialType={initialType}
+              onSavedTypeChange={setSavedType}
             />
+            {isEngineStop && <Alert severity="warning">{t('dashboardImmobilizeSafety')}</Alert>}
           </AccordionDetails>
         </Accordion>
         <div className={classes.buttons}>
-          <Button type="button" color="primary" variant="outlined" onClick={() => navigate(-1)}>
+          <Button type="button" variant="outlined" onClick={() => navigate(-1)} disabled={sending}>
             {t('sharedCancel')}
           </Button>
           <Button
             type="button"
-            color="primary"
             variant="contained"
-            onClick={handleSend}
-            disabled={!validate()}
+            disabled={readonly || sending || !(savedId || item.type)}
+            onClick={() => {
+              if (isEngineStop) setConfirmOpen(true);
+              else handleSend();
+            }}
           >
             {t('commandSend')}
           </Button>
         </div>
       </Container>
+      <Dialog
+        open={confirmOpen}
+        onClose={() => {
+          if (!sending) setConfirmOpen(false);
+        }}
+      >
+        <DialogTitle>{t('dashboardImmobilize')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{t('dashboardImmobilizeConfirm')}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={sending} onClick={() => setConfirmOpen(false)}>
+            {t('sharedCancel')}
+          </Button>
+          <Button color="error" disabled={sending || readonly} onClick={handleSend}>
+            {t('commandSend')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </PageLayout>
   );
 };

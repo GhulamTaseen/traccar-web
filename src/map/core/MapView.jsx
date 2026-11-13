@@ -5,12 +5,18 @@ import { googleProtocol } from 'maplibre-google-maps';
 import { Protocol } from 'pmtiles';
 import { useRef, useLayoutEffect, useEffect, useState, useMemo } from 'react';
 import { useTheme } from '@mui/material';
+import { makeStyles } from 'tss-react/mui';
 import MapSwitcher from '../control/MapSwitcher';
 import { useAttributePreference, usePreference } from '../../common/util/preferences';
 import usePersistedState from '../../common/util/usePersistedState';
 import { mapImages } from './preloadImages';
 import useMapStyles from './useMapStyles';
 import { useAsyncTask } from '../../reactHelper';
+import { mapThemeStyles, themedMapStyle } from './mapTheme';
+
+const useStyles = makeStyles()((theme) => ({
+  root: { width: '100%', height: '100%', ...mapThemeStyles(theme) },
+}));
 
 const element = document.createElement('div');
 element.style.width = '100%';
@@ -70,6 +76,7 @@ const initMap = async () => {
 
 const MapView = ({ children }) => {
   const theme = useTheme();
+  const { classes } = useStyles();
 
   const containerRef = useRef(null);
 
@@ -90,6 +97,11 @@ const MapView = ({ children }) => {
     const filtered = mapStyles.filter((s) => s.available && activeMapStyles.includes(s.id));
     return filtered.length ? filtered : mapStyles.filter((s) => s.id === 'osm');
   }, [mapStyles, activeMapStyles]);
+  const { style, filter } = themedMapStyle(styles, selectedStyleId, theme.palette.mode === 'dark');
+
+  useEffect(() => {
+    map.getCanvas().style.filter = filter;
+  }, [filter]);
 
   useAsyncTask(async () => {
     if (theme.direction === 'rtl') {
@@ -115,15 +127,9 @@ const MapView = ({ children }) => {
   }, [maxZoom]);
 
   useEffect(() => {
-    const style = styles.find((s) => s.id === selectedStyleId);
-    if (!style) {
-      setSelectedStyleId(styles[0].id);
-      return;
-    }
     updateReadyValue(false);
     map.coordinateSystem = style.coordinateSystem;
-    map.setStyle(style.style, { diff: false });
-    map.setTransformRequest(style.transformRequest);
+    map.setTransformRequest(style.transformRequest || null);
     let timeoutId;
     const waiting = () => {
       if (!map.loaded()) {
@@ -134,8 +140,12 @@ const MapView = ({ children }) => {
       }
     };
     map.once('styledata', waiting);
-    return () => clearTimeout(timeoutId);
-  }, [styles, selectedStyleId, setSelectedStyleId]);
+    map.setStyle(style.style, { diff: false });
+    return () => {
+      map.off('styledata', waiting);
+      clearTimeout(timeoutId);
+    };
+  }, [style]);
 
   useLayoutEffect(() => {
     const currentEl = containerRef.current;
@@ -147,8 +157,8 @@ const MapView = ({ children }) => {
   }, [containerRef]);
 
   return (
-    <div style={{ width: '100%', height: '100%' }} ref={containerRef}>
-      <MapSwitcher styles={styles} selectedId={selectedStyleId} onSelect={setSelectedStyleId} />
+    <div className={classes.root} ref={containerRef}>
+      <MapSwitcher styles={styles} selectedId={style.id} onSelect={setSelectedStyleId} />
       {mapReady && children}
     </div>
   );

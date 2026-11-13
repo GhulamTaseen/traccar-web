@@ -1,7 +1,6 @@
 import { useMediaQuery, Paper } from '@mui/material';
-import { alpha } from '@mui/material/styles';
+import { alpha, useTheme} from '@mui/material/styles';
 import { makeStyles } from 'tss-react/mui';
-import { useTheme } from '@mui/material/styles';
 import LogoImage from './LogoImage';
 
 const useStyles = makeStyles()((theme) => ({

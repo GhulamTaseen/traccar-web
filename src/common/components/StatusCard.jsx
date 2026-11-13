@@ -13,6 +13,12 @@ import {
   Tooltip,
   ListItemText,
   Box,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
 import { alpha, keyframes } from '@mui/material/styles';
@@ -31,6 +37,13 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PlaceIcon from '@mui/icons-material/Place';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import AnchorIcon from '@mui/icons-material/Anchor';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined';
+import SpeedIcon from '@mui/icons-material/Speed';
+import VehicleMiniMap from '../../map/VehicleMiniMap';
+import { positionMotion } from '../util/vehicle';
 
 import { useTranslation } from './LocalizationProvider';
 import RemoveDialog from './RemoveDialog';
@@ -302,6 +315,84 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
   error: {
     color: theme.palette.error.main,
   },
+  dashboardRoot: {
+    position: 'absolute',
+    top: 28,
+    insetInlineStart: 24,
+    zIndex: 3,
+    width: 360,
+    maxWidth: 'calc(100% - 32px)',
+    maxHeight: 'calc(100% - 52px)',
+    overflowY: 'auto',
+    borderRadius: 10,
+    border: `1px solid ${theme.palette.surface.outline}`,
+    background: theme.palette.surface.glass,
+    backdropFilter: 'blur(18px)',
+    boxShadow: theme.shadows[8],
+    [theme.breakpoints.down('sm')]: {
+      top: 12,
+      insetInlineStart: 12,
+      maxWidth: 'calc(100% - 24px)',
+      maxHeight: 'calc(100% - 24px)',
+    },
+  },
+  dashboardHeader: {
+    padding: theme.spacing(1.25, 1.5),
+    background:
+      theme.palette.mode === 'dark'
+        ? `linear-gradient(115deg, ${alpha(theme.palette.geometry.main, 0.1)}, ${alpha('#1474c5', 0.65)})`
+        : theme.palette.surface.main,
+    borderBottom: `1px solid ${theme.palette.divider}`,
+  },
+  dashboardHero: { position: 'relative', background: theme.palette.surface.sunken },
+  dashboardSpeed: {
+    position: 'absolute',
+    top: 12,
+    insetInlineEnd: 14,
+    zIndex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    fontSize: 11,
+    padding: '3px 6px',
+    borderRadius: 5,
+    background: theme.palette.surface.glass,
+  },
+  dashboardBody: { padding: theme.spacing(1.75) },
+  telemetry: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: 6,
+    marginTop: 10,
+    marginBottom: 18,
+  },
+  telemetryItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 6,
+    minWidth: 0,
+    padding: theme.spacing(1.25, 0.75),
+    borderRadius: 8,
+    background: alpha(theme.palette.surface.sunken, 0.65),
+    border: `1px solid ${theme.palette.divider}`,
+    '& svg': { fontSize: 19, color: theme.palette.geometry.main, flexShrink: 0 },
+    '& .MuiTypography-root': { fontSize: 11 },
+  },
+  dashboardActions: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 8,
+    marginTop: 14,
+    '& .MuiButton-root': {
+      fontSize: 11,
+      fontWeight: 500,
+      paddingBlock: 9,
+      color: theme.palette.text.primary,
+      background: theme.palette.surface.raised,
+      boxShadow: theme.shadows[1],
+      border: `1px solid ${theme.palette.divider}`,
+    },
+  },
 }));
 
 const numberOrNull = (value) => {
@@ -346,7 +437,14 @@ const formatPositionDate = (fixTime) => {
   return isToday ? 'Today' : formatTime(fixTime, 'date');
 };
 
-const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPadding = 0 }) => {
+const StatusCard = ({
+  deviceId,
+  position,
+  onClose,
+  disableActions,
+  desktopPadding = 0,
+  dashboard = false,
+}) => {
   const { classes } = useStyles({ desktopPadding });
 
   const navigate = useNavigate();
@@ -371,6 +469,8 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [removing, setRemoving] = useState(false);
+  const [anchorConfirm, setAnchorConfirm] = useState(false);
+  const [anchorBusy, setAnchorBusy] = useState(false);
 
   const attributes = position?.attributes || {};
   const deviceAttributes = device?.attributes || {};
@@ -470,286 +570,491 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
   });
 
   const handleGeofence = useCatchCallback(async () => {
-    if (position?.latitude == null || position?.longitude == null) {
+    if (
+      readonly ||
+      disableActions ||
+      anchorBusy ||
+      !Number.isFinite(position?.latitude) ||
+      !Number.isFinite(position?.longitude)
+    )
       return;
+    setAnchorBusy(true);
+    try {
+      const response = await fetchOrThrow('/api/geofences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `${device.name} · ${t('dashboardAnchorSite')}`,
+          area: `CIRCLE (${position.latitude} ${position.longitude}, 50)`,
+        }),
+      });
+      const item = await response.json();
+      await fetchOrThrow('/api/permissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: position.deviceId, geofenceId: item.id }),
+      });
+      setAnchorConfirm(false);
+      navigate(`/settings/geofence/${item.id}`);
+    } finally {
+      setAnchorBusy(false);
     }
+  }, [navigate, position, t, device, readonly, disableActions, anchorBusy]);
 
-    const newItem = {
-      name: t('sharedGeofence'),
-      area: `CIRCLE (${position.latitude} ${position.longitude}, 50)`,
-    };
-
-    const response = await fetchOrThrow('/api/geofences', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(newItem),
-    });
-
-    const item = await response.json();
-
-    await fetchOrThrow('/api/permissions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        deviceId: position.deviceId,
-        geofenceId: item.id,
-      }),
-    });
-
-    navigate(`/settings/geofence/${item.id}`);
-  }, [navigate, position, t]);
+  const motion = positionMotion(position);
+  const level = numberOrNull(attributes.batteryLevel);
+  const dashboardBattery =
+    level != null
+      ? `${Math.round(level)}%`
+      : voltage != null
+        ? `${voltage.toFixed(1)} V`
+        : t('sharedNoData');
+  const signal = numberOrNull(attributes.rssi);
 
   return (
     <>
-      <div className={classes.root}>
-        {device && (
-          <Rnd
-            default={{
-              x: 0,
-              y: 0,
-              width: 'auto',
-              height: 'auto',
-            }}
-            enableResizing={false}
-            dragHandleClassName="draggable-header"
-            style={{ position: 'relative' }}
-          >
-            <Card elevation={0} className={classes.card}>
-              <div className={`${classes.header} draggable-header`}>
-                <div className={classes.identity}>
-                  {deviceImage && (
-                    <img
-                      className={classes.vehicleImage}
-                      src={`/api/media/${device.uniqueId}/${deviceImage}`}
-                      alt=""
-                    />
-                  )}
+      {dashboard && device ? (
+        <Card className={classes.dashboardRoot} elevation={0}>
+          <div className={classes.dashboardHeader}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <IconButton
+                size="small"
+                onClick={onClose}
+                aria-label={t('dashboardTrackerMap')}
+                sx={{ color: 'geometry.main' }}
+              >
+                <ArrowBackIcon fontSize="small" />
+              </IconButton>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography variant="body2" fontWeight={600} noWrap>
+                  {device.name}
+                </Typography>
+                {deviceAttributes.nickname && (
+                  <Typography variant="caption" color="text.secondary">
+                    {deviceAttributes.nickname}
+                  </Typography>
+                )}
+              </Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                noWrap
+                sx={{ maxWidth: '40%', fontSize: 9 }}
+              >
+                {device.uniqueId}
+              </Typography>
+              <IconButton
+                size="small"
+                disabled={!position}
+                onClick={(event) => setAnchorEl(event.currentTarget)}
+                aria-label={t('sharedExtra')}
+              >
+                <MoreHorizIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', pl: 4, fontSize: 10 }}>
+              <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Box
+                  component="span"
+                  sx={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: '50%',
+                    bgcolor: statusColors[device.status]
+                      ? `${statusColors[device.status]}.main`
+                      : 'neutral.main',
+                  }}
+                />
+                {formatStatus(device.status, t)}
+              </Box>
+              <Tooltip
+                title={
+                  device.status !== 'online' ? t('dashboardLastPosition') : t('positionMotion')
+                }
+              >
+                <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Box
+                    component="span"
+                    sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: 'geometry.main' }}
+                  />
+                  {motion == null
+                    ? t('sharedNoData')
+                    : t(motion ? 'dashboardMoving' : 'dashboardIdle')}
+                </Box>
+              </Tooltip>
+              <span>
+                {speedValue == null
+                  ? t('sharedNoData')
+                  : `${speedValue.toFixed(0)} ${speedUnitLabel}`}
+              </span>
+            </Box>
+          </div>
+          <div className={classes.dashboardHero}>
+            <VehicleMiniMap device={device} position={position} />
+            {position && (
+              <span className={classes.dashboardSpeed}>
+                <SpeedIcon sx={{ fontSize: 16, color: 'geometry.main' }} />
+                {speedValue?.toFixed(0)} {speedUnitLabel}
+              </span>
+            )}
+          </div>
+          <div className={classes.dashboardBody}>
+            <Typography
+              variant="body2"
+              sx={{ fontSize: 12, display: 'flex', gap: 1, alignItems: 'center' }}
+            >
+              <PlaceIcon sx={{ fontSize: 15 }} />
+              {t('dashboardLastPosition')}
+            </Typography>
+            <div className={classes.telemetry}>
+              {[
+                [t('dashboardBattery'), <BatteryFullIcon key="battery" />, dashboardBattery],
+                [
+                  t('positionIgnition'),
+                  <VpnKeyOutlinedIcon key="ignition" />,
+                  ignition == null
+                    ? t('sharedNoData')
+                    : t(ignition ? 'dashboardOn' : 'dashboardOff'),
+                ],
+                [
+                  t('dashboardSignal'),
+                  <SignalCellularAltIcon key="signal" />,
+                  signal == null ? t('sharedNoData') : String(signal),
+                ],
+              ].map(([label, icon, value]) => (
+                <Box key={label} className={classes.telemetryItem}>
+                  {icon}
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography color="text.secondary">{label}</Typography>
+                    <Typography fontWeight={500}>{value}</Typography>
+                  </Box>
+                </Box>
+              ))}
+            </div>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+              <PlaceIcon sx={{ fontSize: 15, mt: 0.25 }} />
+              <Box
+                sx={{
+                  minWidth: 0,
+                  fontSize: 10,
+                  lineHeight: 1.5,
+                  '& .MuiTypography-root, & .MuiLink-root': {
+                    fontSize: 10,
+                    overflowWrap: 'anywhere',
+                  },
+                }}
+              >
+                <Typography fontWeight={600} sx={{ mb: 0.75 }}>
+                  {t('dashboardLastPosition')}
+                </Typography>
+                {position ? (
+                  <AddressValue
+                    key={position.id}
+                    latitude={position.latitude}
+                    longitude={position.longitude}
+                    originalAddress={position.address}
+                  />
+                ) : (
+                  <Typography color="text.secondary">{t('sharedNoData')}</Typography>
+                )}
+                <Typography color="text.secondary" sx={{ mt: 0.75 }}>
+                  {position ? formatTime(position.fixTime, 'seconds') : t('sharedNoData')}
+                </Typography>
+              </Box>
+            </Box>
+            <div className={classes.dashboardActions}>
+              <Button
+                startIcon={<WarningAmberIcon sx={{ color: 'error.main' }} />}
+                disabled={readonly || disableActions}
+                onClick={() => navigate(`/settings/device/${deviceId}/command?type=engineStop`)}
+              >
+                {t('dashboardImmobilize')}
+              </Button>
+              <Button
+                startIcon={<AnchorIcon sx={{ color: 'geometry.main' }} />}
+                disabled={
+                  readonly ||
+                  disableActions ||
+                  anchorBusy ||
+                  !position ||
+                  !Number.isFinite(position.latitude) ||
+                  !Number.isFinite(position.longitude)
+                }
+                onClick={() => setAnchorConfirm(true)}
+              >
+                {t('dashboardAnchorSite')}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <div className={classes.root}>
+          {device && (
+            <Rnd
+              default={{
+                x: 0,
+                y: 0,
+                width: 'auto',
+                height: 'auto',
+              }}
+              enableResizing={false}
+              dragHandleClassName="draggable-header"
+              style={{ position: 'relative' }}
+            >
+              <Card elevation={0} className={classes.card}>
+                <div className={`${classes.header} draggable-header`}>
+                  <div className={classes.identity}>
+                    {deviceImage && (
+                      <img
+                        className={classes.vehicleImage}
+                        src={`/api/media/${device.uniqueId}/${deviceImage}`}
+                        alt=""
+                      />
+                    )}
 
-                  <div>
-                    <Typography variant="body1">{device.name}</Typography>
-                    <Typography
-                      variant="caption"
-                      color={statusColors[device.status] || 'textSecondary'}
-                    >
-                      {formatStatus(device.status, t)}
-                    </Typography>
+                    <div>
+                      <Typography variant="body1">{device.name}</Typography>
+                      <Typography
+                        variant="caption"
+                        color={statusColors[device.status] || 'textSecondary'}
+                      >
+                        {formatStatus(device.status, t)}
+                      </Typography>
+                    </div>
                   </div>
-                </div>
 
-                <Box className={classes.indicators}>
-                  {indicators.map((item) => (
-                    <Tooltip key={item.key} title={item.title}>
-                      <span className={`${classes.indicator}${item.active ? ' active' : ''}`}>
-                        {item.icon}
-                      </span>
-                    </Tooltip>
-                  ))}
+                  <Box className={classes.indicators}>
+                    {indicators.map((item) => (
+                      <Tooltip key={item.key} title={item.title}>
+                        <span className={`${classes.indicator}${item.active ? ' active' : ''}`}>
+                          {item.icon}
+                        </span>
+                      </Tooltip>
+                    ))}
 
-                  <Tooltip
-                    title={`${t('positionIgnition')}: ${
-                      ignition == null
-                        ? t('sharedNoData')
-                        : t(ignition ? 'eventIgnitionOn' : 'eventIgnitionOff')
-                    }`}
-                  >
-                    <span
-                      className={`${classes.indicator} ${
-                        ignition === true
-                          ? classes.ignitionOn
-                          : ignition === false
-                            ? classes.ignitionOff
-                            : ''
+                    <Tooltip
+                      title={`${t('positionIgnition')}: ${
+                        ignition == null
+                          ? t('sharedNoData')
+                          : t(ignition ? 'eventIgnitionOn' : 'eventIgnitionOff')
                       }`}
                     >
-                      <EngineIcon width={22} height={22} />
-                    </span>
-                  </Tooltip>
+                      <span
+                        className={`${classes.indicator} ${
+                          ignition === true
+                            ? classes.ignitionOn
+                            : ignition === false
+                              ? classes.ignitionOff
+                              : ''
+                        }`}
+                      >
+                        <EngineIcon width={22} height={22} />
+                      </span>
+                    </Tooltip>
 
-                  <Tooltip title={`${t('sharedType')}: ${device.category || t('sharedNoData')}`}>
-                    <span className={classes.indicator}>
-                      <LocalShippingIcon />
-                    </span>
-                  </Tooltip>
-                </Box>
+                    <Tooltip title={`${t('sharedType')}: ${device.category || t('sharedNoData')}`}>
+                      <span className={classes.indicator}>
+                        <LocalShippingIcon />
+                      </span>
+                    </Tooltip>
+                  </Box>
 
-                <CardActions className={classes.toolbar} disableSpacing>
-                  <Tooltip title={t('sharedExtra')}>
-                    <IconButton
-                      className={classes.extraButton}
-                      onClick={(event) => setAnchorEl(event.currentTarget)}
-                      disabled={!position}
-                    >
-                      <MoreHorizIcon />
+                  <CardActions className={classes.toolbar} disableSpacing>
+                    <Tooltip title={t('sharedExtra')}>
+                      <IconButton
+                        className={classes.extraButton}
+                        onClick={(event) => setAnchorEl(event.currentTarget)}
+                        disabled={!position}
+                      >
+                        <MoreHorizIcon />
+                      </IconButton>
+                    </Tooltip>
+
+                    <Tooltip title={t('sharedShare')}>
+                      <span>
+                        <IconButton
+                          onClick={() => navigate(`/settings/device/${deviceId}/share`)}
+                          disabled={shareDisabled || user.temporary || readonly}
+                        >
+                          <LinkIcon />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+
+                    <Tooltip title={t('reportReplay')}>
+                      <span>
+                        <IconButton
+                          onClick={() => navigate(`/replay?deviceId=${deviceId}`)}
+                          disabled={disableActions || !position}
+                        >
+                          <RouteIcon />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+
+                    <Tooltip title={t('sharedEdit')}>
+                      <span>
+                        <IconButton
+                          onClick={() => navigate(`/settings/device/${deviceId}`)}
+                          disabled={disableActions || deviceReadonly}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+
+                    <Tooltip title={t('sharedRemove')}>
+                      <span>
+                        <IconButton
+                          color="error"
+                          onClick={() => setRemoving(true)}
+                          disabled={disableActions || deviceReadonly}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+
+                    <IconButton size="small" onClick={onClose} onTouchStart={onClose}>
+                      <CloseIcon fontSize="small" />
                     </IconButton>
-                  </Tooltip>
+                  </CardActions>
+                </div>
 
-                  <Tooltip title={t('sharedShare')}>
-                    <span>
-                      <IconButton
-                        onClick={() => navigate(`/settings/device/${deviceId}/share`)}
-                        disabled={shareDisabled || user.temporary || readonly}
-                      >
-                        <LinkIcon />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-
-                  <Tooltip title={t('reportReplay')}>
-                    <span>
-                      <IconButton
-                        onClick={() => navigate(`/replay?deviceId=${deviceId}`)}
-                        disabled={disableActions || !position}
-                      >
-                        <RouteIcon />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-
-                  <Tooltip title={t('sharedEdit')}>
-                    <span>
-                      <IconButton
-                        onClick={() => navigate(`/settings/device/${deviceId}`)}
-                        disabled={disableActions || deviceReadonly}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-
-                  <Tooltip title={t('sharedRemove')}>
-                    <span>
-                      <IconButton
-                        color="error"
-                        onClick={() => setRemoving(true)}
-                        disabled={disableActions || deviceReadonly}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-
-                  <IconButton size="small" onClick={onClose} onTouchStart={onClose}>
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                </CardActions>
-              </div>
-
-              {position && (
-                <CardContent>
-                  <div className={classes.body}>
-                    <div className={classes.information}>
-                      <div className={classes.infoRow}>
-                        <AccessTimeIcon className={classes.infoIcon} fontSize="small" />
-                        <div>
-                          <Typography variant="body2">{eventTime}</Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {eventDate}
-                          </Typography>
-                        </div>
-                      </div>
-
-                      <div className={classes.infoRow}>
-                        <PlaceIcon className={classes.infoIcon} fontSize="small" />
-                        <AddressValue
-                          latitude={position.latitude}
-                          longitude={position.longitude}
-                          originalAddress={position.address}
-                        />
-                      </div>
-
-                      <div className={classes.infoRow}>
-                        <NotificationsActiveIcon
-                          className={`${classes.infoIcon} ${
-                            deviceEvents.length > 0 ? classes.success : ''
-                          }`}
-                          fontSize="small"
-                        />
-                        <div>
-                          {deviceEvents.length > 0 ? (
-                            deviceEvents.map((event) => (
-                              <ListItemText
-                                key={event.id}
-                                primary={formatType(event)}
-                                secondary={formatTime(event.eventTime, 'seconds')}
-                              />
-                            ))
-                          ) : (
-                            <Typography variant="body2" color="textSecondary">
-                              {t('sharedNoData')}
+                {position && (
+                  <CardContent>
+                    <div className={classes.body}>
+                      <div className={classes.information}>
+                        <div className={classes.infoRow}>
+                          <AccessTimeIcon className={classes.infoIcon} fontSize="small" />
+                          <div>
+                            <Typography variant="body2">{eventTime}</Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              {eventDate}
                             </Typography>
-                          )}
+                          </div>
+                        </div>
+
+                        <div className={classes.infoRow}>
+                          <PlaceIcon className={classes.infoIcon} fontSize="small" />
+                          <AddressValue
+                            latitude={position.latitude}
+                            longitude={position.longitude}
+                            originalAddress={position.address}
+                          />
+                        </div>
+
+                        <div className={classes.infoRow}>
+                          <NotificationsActiveIcon
+                            className={`${classes.infoIcon} ${
+                              deviceEvents.length > 0 ? classes.success : ''
+                            }`}
+                            fontSize="small"
+                          />
+                          <div>
+                            {deviceEvents.length > 0 ? (
+                              deviceEvents.map((event) => (
+                                <ListItemText
+                                  key={event.id}
+                                  primary={formatType(event)}
+                                  secondary={formatTime(event.eventTime, 'seconds')}
+                                />
+                              ))
+                            ) : (
+                              <Typography variant="body2" color="textSecondary">
+                                {t('sharedNoData')}
+                              </Typography>
+                            )}
+                          </div>
                         </div>
                       </div>
+
+                      <div className={classes.gauges}>
+                        <Gauge
+                          variant="fuel"
+                          label={t('positionFuel')}
+                          ariaUnit={fuelUnit}
+                          value={fuelDisplayValue}
+                          min={0}
+                          max={fuelMax}
+                        />
+
+                        <Gauge
+                          variant="speed"
+                          label={t('positionSpeed')}
+                          value={speedValue}
+                          min={0}
+                          max={speedGaugeMax}
+                          labelFormat={(value) => String(Math.round(value))}
+                          unit={speedUnitLabel}
+                          displayValue={odometerText}
+                          badge="ODO"
+                        />
+
+                        <Gauge
+                          variant="battery"
+                          label={t('positionBattery')}
+                          ariaUnit={batteryUnit}
+                          value={batteryValue}
+                          min={batteryMin}
+                          max={batteryMax}
+                          tickCount={6}
+                          labelFormat={(value) => String(Math.round(value))}
+                          displayValue={batteryText}
+                          {...(hasVoltage
+                            ? { unit: '12V SYS' }
+                            : {
+                                unit: undefined,
+                                innerLabel: {
+                                  text: '%',
+                                  y: 44.5,
+                                  size: 10.5,
+                                  color: '#c4def2',
+                                },
+                                bands: [
+                                  [0, 0.15, COLORS.battRed],
+                                  [0.15, 0.3, COLORS.battOrange],
+                                  [0.3, 1, COLORS.battGreen],
+                                ],
+                              })}
+                        />
+                      </div>
+
+                      <div className={classes.sidePanel}>
+                        <VideocamOffIcon className={classes.muted} fontSize="large" />
+                      </div>
                     </div>
-
-                    <div className={classes.gauges}>
-                      <Gauge
-                        variant="fuel"
-                        label={t('positionFuel')}
-                        ariaUnit={fuelUnit}
-                        value={fuelDisplayValue}
-                        min={0}
-                        max={fuelMax}
-                      />
-
-                      <Gauge
-                        variant="speed"
-                        label={t('positionSpeed')}
-                        value={speedValue}
-                        min={0}
-                        max={speedGaugeMax}
-                        labelFormat={(value) => String(Math.round(value))}
-                        unit={speedUnitLabel}
-                        displayValue={odometerText}
-                        badge="ODO"
-                      />
-
-                      <Gauge
-                        variant="battery"
-                        label={t('positionBattery')}
-                        ariaUnit={batteryUnit}
-                        value={batteryValue}
-                        min={batteryMin}
-                        max={batteryMax}
-                        tickCount={6}
-                        labelFormat={(value) => String(Math.round(value))}
-                        displayValue={batteryText}
-                        {...(hasVoltage
-                          ? { unit: '12V SYS' }
-                          : {
-                              unit: undefined,
-                              innerLabel: {
-                                text: '%',
-                                y: 44.5,
-                                size: 10.5,
-                                color: '#c4def2',
-                              },
-                              bands: [
-                                [0, 0.15, COLORS.battRed],
-                                [0.15, 0.3, COLORS.battOrange],
-                                [0.3, 1, COLORS.battGreen],
-                              ],
-                            })}
-                      />
-                    </div>
-
-                    <div className={classes.sidePanel}>
-                      <VideocamOffIcon className={classes.muted} fontSize="large" />
-                    </div>
-                  </div>
-                </CardContent>
-              )}
-            </Card>
-          </Rnd>
-        )}
-      </div>
+                  </CardContent>
+                )}
+              </Card>
+            </Rnd>
+          )}
+        </div>
+      )}
 
       {position && (
         <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+          {dashboard &&
+            [
+              [t('reportReplay'), () => navigate(`/replay?deviceId=${deviceId}`), disableActions],
+              [
+                t('sharedEdit'),
+                () => navigate(`/settings/device/${deviceId}`),
+                disableActions || deviceReadonly,
+              ],
+              [
+                t('sharedRemove'),
+                () => {
+                  setAnchorEl(null);
+                  setRemoving(true);
+                },
+                disableActions || deviceReadonly,
+              ],
+            ].map(([label, action, disabled]) => (
+              <MenuItem key={label} onClick={action} disabled={disabled}>
+                {label}
+              </MenuItem>
+            ))}
           <MenuItem
             onClick={() => navigate(`/settings/device/${deviceId}/command`)}
             disabled={disableActions}
@@ -764,7 +1069,17 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
             {t('linkLiveVideo')}
           </MenuItem>
 
-          {!readonly && <MenuItem onClick={handleGeofence}>{t('sharedCreateGeofence')}</MenuItem>}
+          {!readonly && (
+            <MenuItem
+              disabled={disableActions}
+              onClick={() => {
+                setAnchorEl(null);
+                setAnchorConfirm(true);
+              }}
+            >
+              {t('sharedCreateGeofence')}
+            </MenuItem>
+          )}
 
           <MenuItem
             component={RouterLink}
@@ -822,6 +1137,25 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
         </Menu>
       )}
 
+      <Dialog
+        open={anchorConfirm}
+        onClose={() => {
+          if (!anchorBusy) setAnchorConfirm(false);
+        }}
+      >
+        <DialogTitle>{t('dashboardAnchorSite')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{t('dashboardAnchorConfirm')}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={anchorBusy} onClick={() => setAnchorConfirm(false)}>
+            {t('sharedCancel')}
+          </Button>
+          <Button disabled={anchorBusy || readonly || disableActions} onClick={handleGeofence}>
+            {t('sharedCreateGeofence')}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <RemoveDialog
         open={removing}
         endpoint="devices"

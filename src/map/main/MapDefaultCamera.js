@@ -2,7 +2,7 @@ import * as maplibregl from 'maplibre-gl';
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { usePreference } from '../../common/util/preferences';
-import { map } from '../core/MapView';
+import { map, useMapReady } from '../core/MapView';
 import { toMapCoordinates } from '../core/mapUtil';
 
 const MapDefaultCamera = ({ filteredPositions }) => {
@@ -14,9 +14,10 @@ const MapDefaultCamera = ({ filteredPositions }) => {
   const defaultZoom = usePreference('zoom', 0);
 
   const [initialized, setInitialized] = useState(false);
+  const mapReady = useMapReady();
 
   useEffect(() => {
-    if (initialized) return;
+    if (!mapReady || initialized) return;
     if (selectedDeviceId) {
       const position = positions[selectedDeviceId];
       if (position) {
@@ -59,6 +60,7 @@ const MapDefaultCamera = ({ filteredPositions }) => {
       }
     }
   }, [
+    mapReady,
     selectedDeviceId,
     initialized,
     defaultLatitude,

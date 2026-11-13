@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import dayjs from 'dayjs';
+import { deviceSearchText } from '../common/util/vehicle';
 
 export default (
   keyword,
@@ -36,12 +37,7 @@ export default (
           !filter.geofences.length ||
           (positions[device.id]?.geofenceIds || []).some((id) => filter.geofences.includes(id)),
       )
-      .filter((device) => {
-        const lowerCaseKeyword = keyword.toLowerCase();
-        return [device.name, device.uniqueId, device.phone, device.model, device.contact].some(
-          (s) => s && s.toLowerCase().includes(lowerCaseKeyword),
-        );
-      });
+      .filter((device) => deviceSearchText(device).includes(keyword.trim().toLocaleLowerCase()));
     switch (filterSort) {
       case 'name':
         filtered.sort((device1, device2) => device1.name.localeCompare(device2.name));

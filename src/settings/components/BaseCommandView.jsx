@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Autocomplete, Checkbox, FormControlLabel, TextField } from '@mui/material';
+import { Alert, Autocomplete, Checkbox, FormControlLabel, TextField } from '@mui/material';
 import { useTranslation } from '../../common/components/LocalizationProvider';
 import { useRestriction } from '../../common/util/permissions';
 import { useAsyncTask } from '../../reactHelper';
@@ -15,6 +15,8 @@ const BaseCommandView = ({
   includeSaved = false,
   savedId,
   setSavedId,
+  initialType,
+  onSavedTypeChange,
 }) => {
   const t = useTranslation();
   const limitCommands = useRestriction('limitCommands');
@@ -25,9 +27,15 @@ const BaseCommandView = ({
 
   const [attributes, setAttributes] = useState([]);
   const [options, setOptions] = useState([]);
+  const [loaded, setLoaded] = useState(false);
 
   useAsyncTask(
     async ({ signal }) => {
+      setLoaded(false);
+      if (onSavedTypeChange) {
+        setItem({});
+        setSavedId(0);
+      }
       if (includeSaved) {
         const savedResponse = await fetchOrThrow(`/api/commands/send?deviceId=${deviceId}`, {
           signal,
@@ -50,9 +58,31 @@ const BaseCommandView = ({
         const types = await typesResponse.json();
         setOptions(types.map((it) => ({ ...it, optionType: 'type', key: `type-${it.type}` })));
       }
+      setLoaded(true);
     },
-    [deviceId, includeSaved, limitCommands],
+    [deviceId, includeSaved, limitCommands, onSavedTypeChange, setItem, setSavedId],
   );
+
+  useEffect(() => {
+    if (!initialType || !loaded) return;
+    const option =
+      options.find((it) => it.type === initialType && it.optionType === 'saved') ||
+      options.find((it) => it.type === initialType && it.optionType === 'type');
+    if (option?.optionType === 'saved') {
+      setSavedId?.(option.id);
+      setItem({});
+    } else {
+      setSavedId?.(0);
+      setItem(option ? { type: option.type, attributes: {} } : {});
+    }
+  }, [initialType, loaded, options, setItem, setSavedId]);
+
+  useEffect(() => {
+    onSavedTypeChange?.(
+      options.find((option) => option.optionType === 'saved' && option.id === savedId)?.type ??
+        null,
+    );
+  }, [options, savedId, onSavedTypeChange]);
 
   useEffect(() => {
     if (item && item.type) {
@@ -88,6 +118,9 @@ const BaseCommandView = ({
 
   return (
     <>
+      {initialType && loaded && !options.some((option) => option.type === initialType) && (
+        <Alert severity="info">{t('dashboardImmobilizeUnavailable')}</Alert>
+      )}
       <Autocomplete
         size="small"
         options={options}
@@ -102,8 +135,8 @@ const BaseCommandView = ({
             ? option.description
             : t(prefixString('command', option.type))
         }
-        renderOption={(props, option) => (
-          <li key={option.key} {...props}>
+        renderOption={({ key, ...props }, option) => (
+          <li key={key} {...props}>
             {option.optionType === 'saved'
               ? option.description
               : t(prefixString('command', option.type))}

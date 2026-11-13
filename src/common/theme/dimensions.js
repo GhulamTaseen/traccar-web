@@ -1,4 +1,6 @@
 export default {
+  dashboardSidebarWidth: 144,
+  dashboardHeaderHeight: 64,
   sidebarWidth: '28%',
   sidebarWidthTablet: '52px',
   drawerWidthDesktop: '360px',

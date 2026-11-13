@@ -10,16 +10,16 @@ import { useAttributePreference } from '../../common/util/preferences';
 import { formatDistance } from '../../common/util/formatter';
 import { useTranslation } from '../../common/components/LocalizationProvider';
 
-const useStyles = makeStyles()(() => ({
+const useStyles = makeStyles()((theme) => ({
   button: {
     '&&': {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: '#333',
+      color: theme.palette.text.primary,
     },
     '&.active': {
-      backgroundColor: '#e6e6e6',
+      backgroundColor: theme.palette.action.selected,
       borderRadius: 'inherit',
     },
   },
