@@ -59,7 +59,7 @@ const useStyles = makeStyles()((theme, { miniVariant }) => ({
     border: 'none',
     backgroundColor: alpha(
       theme.palette.background.paper,
-      theme.palette.mode === 'dark' ? 0.72 : 0.8,
+      theme.palette.mode === 'dark' ? 0.94 : 0.96,
     ),
     backgroundImage: 'none',
     backdropFilter: 'blur(22px) saturate(160%)',
@@ -78,7 +78,7 @@ const useStyles = makeStyles()((theme, { miniVariant }) => ({
     minHeight: 64,
   },
   mobileDrawer: {
-    width: theme.dimensions.drawerWidthTablet,
+    width: 'min(320px, 86vw)',
     '@media print': {
       display: 'none',
     },
@@ -100,10 +100,12 @@ const useStyles = makeStyles()((theme, { miniVariant }) => ({
   },
   content: {
     flexGrow: 1,
+    minWidth: 0,
     alignItems: 'stretch',
     display: 'flex',
     flexDirection: 'column',
     overflowY: 'auto',
+    overflowX: 'hidden',
   },
 }));
 

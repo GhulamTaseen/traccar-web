@@ -9,6 +9,7 @@ import { makeStyles } from 'tss-react/mui';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import { useAttributePreference, usePreference } from '../common/util/preferences';
 import usePersistedState from '../common/util/usePersistedState';
+import useVehicleImage from '../common/util/useVehicleImage';
 import { mapIcons, mapIconKey } from './core/preloadImages';
 import useMapStyles from './core/useMapStyles';
 import { mapThemeStyles, themedMapStyle } from './core/mapTheme';
@@ -51,7 +52,12 @@ const useStyles = makeStyles()((theme) => ({
     )}`,
     pointerEvents: 'none',
   },
-  imageHalo: { width: 104, height: 104 },
+  imageHalo: {
+    width: 104,
+    height: 104,
+    overflow: 'hidden',
+    backgroundColor: theme.palette.mode === 'dark' ? '#f1f5f9' : '#ffffff',
+  },
   categoryIcon: {
     display: 'block',
     width: 46,
@@ -61,10 +67,10 @@ const useStyles = makeStyles()((theme) => ({
   },
   vehicleImage: {
     display: 'block',
-    width: 90,
-    height: 78,
+    width: '88%',
+    height: '88%',
     objectFit: 'contain',
-    borderRadius: 12,
+    borderRadius: '50%',
   },
   noData: {
     position: 'absolute',
@@ -118,12 +124,16 @@ const VehicleMiniMap = ({ device, position }) => {
       : point;
   }, [hasCoordinates, latitude, longitude, style.coordinateSystem]);
   const deviceImage = device?.attributes?.deviceImage;
-  const imageUrl =
+  const originalImageUrl =
     deviceImage && device?.uniqueId
       ? `/api/media/${encodeURIComponent(device.uniqueId)}/${encodeURIComponent(deviceImage)}`
-      : mapIcons[mapIconKey(device?.category)];
-  const uploadedImage = Boolean(deviceImage && device?.uniqueId);
-  const imageFailed = failedImage === imageUrl;
+      : null;
+  const uploadedImage = Boolean(originalImageUrl);
+  const preparedImageUrl = useVehicleImage(originalImageUrl);
+  const imageUrl = uploadedImage
+    ? preparedImageUrl || originalImageUrl
+    : mapIcons[mapIconKey(device?.category)];
+  const imageFailed = uploadedImage && failedImage === originalImageUrl;
   const regionLabel = `${device?.name ? `${device.name} — ` : ''}${t('sharedLocation')}`;
 
   // Keep a single independent instance while valid coordinates are present.
@@ -248,8 +258,12 @@ const VehicleMiniMap = ({ device, position }) => {
               className={uploadedImage ? classes.vehicleImage : classes.categoryIcon}
               src={imageUrl}
               alt={device?.name || t('sharedLocation')}
-              onError={() => setFailedImage(imageUrl)}
-              onLoad={() => setFailedImage((failed) => (failed === imageUrl ? null : failed))}
+              onError={() => setFailedImage(originalImageUrl || imageUrl)}
+              onLoad={() =>
+                setFailedImage((failed) =>
+                  failed === (originalImageUrl || imageUrl) ? null : failed,
+                )
+              }
             />
           </div>,
           markerElement,

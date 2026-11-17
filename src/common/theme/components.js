@@ -7,6 +7,13 @@ const ambientShadow = (theme, { y = 12, blur = 32, opacity = 0.16 } = {}) =>
     ? `0 1px 1px rgba(0, 0, 0, 0.4), 0 ${y}px ${blur}px -16px rgba(0, 0, 0, 0.65)`
     : `0 1px 2px rgba(16, 24, 40, 0.04), 0 ${y}px ${blur}px -16px rgba(16, 24, 40, ${opacity})`;
 
+const floatingPaper = (theme) => ({
+  backgroundColor: theme.palette.background.paper,
+  backgroundImage: 'none',
+  border: `1px solid ${theme.palette.divider}`,
+  boxShadow: ambientShadow(theme, { y: 16, blur: 40, opacity: 0.2 }),
+});
+
 export default {
   MuiCssBaseline: {
     styleOverrides: (theme) => ({
@@ -181,6 +188,108 @@ export default {
       }),
     },
   },
+  MuiListItemText: {
+    styleOverrides: {
+      primary: ({ theme }) => ({
+        fontSize: theme.typography.body2.fontSize,
+        fontWeight: 500,
+        lineHeight: theme.typography.body2.lineHeight,
+      }),
+      secondary: ({ theme }) => ({
+        fontSize: theme.typography.caption.fontSize,
+        lineHeight: theme.typography.caption.lineHeight,
+      }),
+    },
+  },
+  MuiMenu: {
+    styleOverrides: {
+      paper: ({ theme }) => ({
+        ...floatingPaper(theme),
+        marginTop: 4,
+        '& .MuiList-root': {
+          paddingTop: 4,
+          paddingBottom: 4,
+        },
+      }),
+    },
+  },
+  MuiPopover: {
+    styleOverrides: {
+      paper: ({ theme }) => floatingPaper(theme),
+    },
+  },
+  MuiMenuItem: {
+    styleOverrides: {
+      root: ({ theme }) => ({
+        minHeight: 36,
+        fontSize: theme.typography.body2.fontSize,
+        fontWeight: 500,
+        lineHeight: theme.typography.body2.lineHeight,
+        '&.Mui-disabled': {
+          opacity: 0.55,
+        },
+      }),
+    },
+  },
+  MuiAutocomplete: {
+    styleOverrides: {
+      paper: ({ theme }) => ({
+        ...floatingPaper(theme),
+        marginTop: 4,
+        '& .MuiAutocomplete-listbox': {
+          paddingTop: 4,
+          paddingBottom: 4,
+        },
+      }),
+      option: ({ theme }) => ({
+        fontSize: theme.typography.body2.fontSize,
+        lineHeight: theme.typography.body2.lineHeight,
+        minHeight: 44,
+      }),
+    },
+  },
+  MuiInputBase: {
+    styleOverrides: {
+      root: ({ theme }) => ({
+        fontSize: theme.typography.body1.fontSize,
+        lineHeight: theme.typography.body1.lineHeight,
+      }),
+    },
+  },
+  MuiFormHelperText: {
+    styleOverrides: {
+      root: ({ theme }) => ({
+        fontSize: theme.typography.caption.fontSize,
+        lineHeight: theme.typography.caption.lineHeight,
+      }),
+    },
+  },
+  MuiChip: {
+    styleOverrides: {
+      label: ({ theme }) => ({
+        fontSize: theme.typography.caption.fontSize,
+        fontWeight: 500,
+      }),
+    },
+  },
+  MuiDialogTitle: {
+    styleOverrides: {
+      root: ({ theme }) => ({
+        fontSize: theme.typography.h6.fontSize,
+        fontWeight: theme.typography.h6.fontWeight,
+        lineHeight: theme.typography.h6.lineHeight,
+      }),
+    },
+  },
+  MuiDialogContentText: {
+    styleOverrides: {
+      root: ({ theme }) => ({
+        fontSize: theme.typography.body1.fontSize,
+        lineHeight: theme.typography.body1.lineHeight,
+        color: theme.palette.text.secondary,
+      }),
+    },
+  },
   MuiOutlinedInput: {
     styleOverrides: {
       root: ({ theme }) => ({
@@ -220,15 +329,25 @@ export default {
       tooltip: {
         borderRadius: 8,
         fontWeight: 500,
+        fontSize: 12,
       },
     },
   },
   MuiTableCell: {
     styleOverrides: {
       root: ({ theme }) => ({
+        fontSize: theme.typography.body2.fontSize,
+        lineHeight: theme.typography.body2.lineHeight,
         '@media print': {
           color: theme.palette.alwaysDark.main,
         },
+      }),
+      head: ({ theme }) => ({
+        fontSize: theme.typography.caption.fontSize,
+        fontWeight: 600,
+        lineHeight: 1.4,
+        letterSpacing: '0.02em',
+        color: theme.palette.text.secondary,
       }),
     },
   },

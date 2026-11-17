@@ -60,13 +60,24 @@ const useStyles = makeStyles()((theme) => ({
   neutral: {
     color: theme.palette.neutral.main,
   },
+  listItem: {
+    '&& .MuiListItemText-root .MuiListItemText-primary': {
+      fontSize: 14,
+      fontWeight: 500,
+      lineHeight: 1.45,
+    },
+    '&& .MuiListItemText-root .MuiListItemText-secondary': {
+      fontSize: 12,
+      lineHeight: 1.4,
+    },
+  },
   selected: {
     backgroundColor: theme.palette.action.selected,
   },
 }));
 
 const DeviceRow = ({ devices, index, style }) => {
-  const { classes } = useStyles();
+  const { classes, cx } = useStyles();
   const dispatch = useDispatch();
   const t = useTranslation();
 
@@ -124,7 +135,7 @@ const DeviceRow = ({ devices, index, style }) => {
         onClick={() => dispatch(devicesActions.selectId(item.id))}
         disabled={!admin && item.disabled}
         selected={selectedDeviceId === item.id}
-        className={selectedDeviceId === item.id ? classes.selected : null}
+        className={cx(classes.listItem, selectedDeviceId === item.id && classes.selected)}
       >
         <ListItemAvatar>
           <Avatar>

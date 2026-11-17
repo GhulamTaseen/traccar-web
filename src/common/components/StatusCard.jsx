@@ -54,6 +54,7 @@ import { useDeviceReadonly, useRestriction } from '../util/permissions';
 import { devicesActions } from '../../store';
 import { useCatch, useCatchCallback } from '../../reactHelper';
 import { useAttributePreference } from '../util/preferences';
+import useVehicleImage from '../util/useVehicleImage';
 import fetchOrThrow from '../util/fetchOrThrow';
 
 import { formatNotificationTitle, formatStatus, formatTime } from '../util/formatter';
@@ -162,8 +163,9 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
   },
   vehicleImage: {
     width: 46,
-    height: 36,
+    height: 38,
     objectFit: 'contain',
+    borderRadius: 6,
     [theme.breakpoints.down('sm')]: {
       width: 36,
       height: 32,
@@ -353,8 +355,9 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
     display: 'flex',
     alignItems: 'center',
     gap: 5,
-    fontSize: 11,
-    padding: '3px 6px',
+    fontSize: 12,
+    fontWeight: 500,
+    padding: '3px 7px',
     borderRadius: 5,
     background: theme.palette.surface.glass,
   },
@@ -376,7 +379,7 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
     background: alpha(theme.palette.surface.sunken, 0.65),
     border: `1px solid ${theme.palette.divider}`,
     '& svg': { fontSize: 19, color: theme.palette.geometry.main, flexShrink: 0 },
-    '& .MuiTypography-root': { fontSize: 11 },
+    '& .MuiTypography-root': { fontSize: 12, lineHeight: 1.4 },
   },
   dashboardActions: {
     display: 'grid',
@@ -384,9 +387,10 @@ const useStyles = makeStyles()((theme, { desktopPadding = 0 }) => ({
     gap: 8,
     marginTop: 14,
     '& .MuiButton-root': {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 500,
-      paddingBlock: 9,
+      minHeight: 36,
+      paddingBlock: 8,
       color: theme.palette.text.primary,
       background: theme.palette.surface.raised,
       boxShadow: theme.shadows[1],
@@ -475,6 +479,11 @@ const StatusCard = ({
   const attributes = position?.attributes || {};
   const deviceAttributes = device?.attributes || {};
   const deviceImage = deviceAttributes.deviceImage;
+  const deviceImageUrl =
+    deviceImage && device?.uniqueId
+      ? `/api/media/${encodeURIComponent(device.uniqueId)}/${encodeURIComponent(deviceImage)}`
+      : null;
+  const preparedDeviceImage = useVehicleImage(deviceImageUrl);
 
   const deviceEvents = events.filter((event) => event.deviceId === deviceId);
 
@@ -639,7 +648,7 @@ const StatusCard = ({
                 variant="caption"
                 color="text.secondary"
                 noWrap
-                sx={{ maxWidth: '40%', fontSize: 9 }}
+                sx={{ maxWidth: '40%', fontSize: 11 }}
               >
                 {device.uniqueId}
               </Typography>
@@ -652,7 +661,7 @@ const StatusCard = ({
                 <MoreHorizIcon fontSize="small" />
               </IconButton>
             </Box>
-            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', pl: 4, fontSize: 10 }}>
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', pl: 4, fontSize: 12 }}>
               <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <Box
                   component="span"
@@ -736,10 +745,10 @@ const StatusCard = ({
               <Box
                 sx={{
                   minWidth: 0,
-                  fontSize: 10,
+                  fontSize: 12,
                   lineHeight: 1.5,
                   '& .MuiTypography-root, & .MuiLink-root': {
-                    fontSize: 10,
+                    fontSize: 12,
                     overflowWrap: 'anywhere',
                   },
                 }}
@@ -804,10 +813,10 @@ const StatusCard = ({
               <Card elevation={0} className={classes.card}>
                 <div className={`${classes.header} draggable-header`}>
                   <div className={classes.identity}>
-                    {deviceImage && (
+                    {deviceImageUrl && (
                       <img
                         className={classes.vehicleImage}
-                        src={`/api/media/${device.uniqueId}/${deviceImage}`}
+                        src={preparedDeviceImage || deviceImageUrl}
                         alt=""
                       />
                     )}

@@ -1,5 +1,5 @@
 export default {
-  dashboardSidebarWidth: 144,
+  dashboardSidebarWidth: 232,
   dashboardHeaderHeight: 64,
   sidebarWidth: '28%',
   sidebarWidthTablet: '52px',

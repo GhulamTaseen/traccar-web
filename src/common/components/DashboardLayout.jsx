@@ -93,27 +93,41 @@ const useStyles = makeStyles()((theme) => ({
     paddingBottom: 'env(safe-area-inset-bottom)',
   },
   navigation: {
-    padding: theme.spacing(0.5, 0),
+    padding: theme.spacing(0.5, 1.5),
     '&& .MuiListItemButton-root': {
-      minHeight: 38,
-      margin: theme.spacing(0.25, 0.5),
-      padding: theme.spacing(0.5, 1),
+      minHeight: 44,
+      margin: theme.spacing(0.5, 0),
+      padding: theme.spacing(0.75, 1.5),
+      borderRadius: 8,
       borderInlineStart: '2px solid transparent',
       '&.Mui-selected': {
         borderInlineStartColor: theme.palette.geometry.main,
-        background: alpha(theme.palette.geometry.main, 0.09),
+        background: alpha(theme.palette.geometry.main, 0.12),
+        backgroundImage: 'none',
+        boxShadow: 'none',
         '&::before': { display: 'none' },
       },
-      '& .MuiListItemIcon-root': { minWidth: 24, color: theme.palette.text.secondary },
+      '& .MuiListItemIcon-root': {
+        minWidth: 34,
+        color: theme.palette.text.secondary,
+      },
     },
-    '& .MuiSvgIcon-root': { fontSize: 16 },
+    '&& .MuiSvgIcon-root': { fontSize: 19 },
     '& .MuiListItemText-root': { minWidth: 0 },
-    '& .MuiListItemText-primary': {
-      fontSize: 11,
+    '&& .MuiListItemText-root .MuiListItemText-primary': {
+      fontSize: 14,
       fontWeight: 500,
+      lineHeight: 1.45,
       whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
+    },
+  },
+  secondaryNavigation: {
+    marginTop: theme.spacing(1),
+    '&& .MuiListItemText-root .MuiListItemText-primary': {
+      fontSize: 13,
+      fontWeight: 500,
     },
   },
   header: {
@@ -135,7 +149,7 @@ const useStyles = makeStyles()((theme) => ({
     width: 300,
     maxWidth: '40%',
     '& .MuiOutlinedInput-root': {
-      fontSize: 12,
+      fontSize: 13,
       background: alpha(theme.palette.surface.sunken, 0.7),
     },
     [theme.breakpoints.down('sm')]: { flex: 1, width: 'auto', maxWidth: 'none' },
@@ -152,7 +166,7 @@ const useStyles = makeStyles()((theme) => ({
     alignItems: 'center',
     flexDirection: 'column',
     gap: 3,
-    '& .MuiTypography-root': { fontSize: 9, lineHeight: 1.1 },
+    '& .MuiTypography-root': { fontSize: 11, lineHeight: 1.15 },
   },
   count: {
     width: 27,
@@ -198,6 +212,14 @@ const DashboardLayout = () => {
   const selectedId = useSelector((state) => state.devices.selectedId);
   const socket = useSelector((state) => state.session.socket);
   const counts = useMemo(() => fleetStatistics(devices, positions), [devices, positions]);
+  const deviceOptions = useMemo(() => {
+    const seen = new Set();
+    return Object.values(devices).filter((device) => {
+      if (device?.id == null || seen.has(device.id)) return false;
+      seen.add(device.id);
+      return true;
+    });
+  }, [devices]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [devicesOpen, setDevicesOpen] = useState(false);
   const [eventsOpen, setEventsOpen] = useState(false);
@@ -361,7 +383,7 @@ const DashboardLayout = () => {
         </List>
       </div>
       <div className={classes.navigationBottom}>
-        <List className={classes.navigation}>
+        <List className={`${classes.navigation} ${classes.secondaryNavigation}`}>
           <ListItemButton
             onClick={() => go('/settings/preferences?menu=true')}
             selected={location.pathname === '/settings/preferences'}
@@ -397,7 +419,7 @@ const DashboardLayout = () => {
           onClose={() => setMobileOpen(false)}
           slotProps={{
             paper: {
-              sx: { width: 200, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+              sx: { width: 232, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
             },
           }}
         >
@@ -413,10 +435,14 @@ const DashboardLayout = () => {
         <Autocomplete
           className={classes.search}
           size="small"
-          options={Object.values(devices)}
+          options={deviceOptions}
           getOptionLabel={(device) => device.name}
           getOptionDisabled={(device) => !admin && device.disabled}
           isOptionEqualToValue={(option, value) => option.id === value.id}
+          onOpen={() => {
+            setDevicesOpen(false);
+            setEventsOpen(false);
+          }}
           filterOptions={(options, { inputValue }) =>
             options.filter((device) =>
               deviceSearchText(device).includes(inputValue.trim().toLocaleLowerCase()),

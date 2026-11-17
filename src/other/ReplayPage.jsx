@@ -28,19 +28,25 @@ import MapOverlay from '../map/overlay/MapOverlay';
 const useStyles = makeStyles()((theme) => ({
   root: {
     height: '100%',
+    position: 'relative',
+    overflow: 'hidden',
   },
   sidebar: {
     display: 'flex',
     flexDirection: 'column',
-    position: 'fixed',
+    position: 'absolute',
     zIndex: 3,
-    left: 0,
+    insetInlineStart: 0,
     top: 0,
     margin: theme.spacing(1.5),
     width: theme.dimensions.drawerWidthDesktop,
+    maxWidth: 'calc(100% - 24px)',
+    maxHeight: 'calc(100% - 24px)',
     [theme.breakpoints.down('md')]: {
-      width: '100%',
-      margin: 0,
+      width: 'calc(100% - 16px)',
+      maxWidth: 'calc(100% - 16px)',
+      margin: theme.spacing(1),
+      maxHeight: 'calc(100% - 16px)',
     },
   },
   title: {
@@ -64,6 +70,9 @@ const useStyles = makeStyles()((theme) => ({
   content: {
     display: 'flex',
     flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+    overflowY: 'auto',
     padding: theme.spacing(2),
     [theme.breakpoints.down('md')]: {
       margin: theme.spacing(1),
